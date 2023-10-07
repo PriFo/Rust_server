@@ -1,0 +1,3 @@
+*.env
+/__pycashe__
+/user_help_photos

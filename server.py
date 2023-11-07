@@ -1,48 +1,95 @@
 
-
 class Response:
 
-    def __init__(self) -> None:
-        self._type: str = ''
-        self._id: str = ''
+    def __init__(self, data: dict) -> None:
+        self._type: str = data.get('data').get('type')
+        self._id: str = data.get('data').get('id')
+        self._data: dict = data
 
-    def get_server(self):
-        return self
+    def get_object(self):
+        """Метод, возвращающий объект по заданному типу"""
+        if self._type == 'player':
+            return Player(self._id, self._data)
+        elif self._type == 'server':
+            return Server(self._id, self._data).get_server()
+
+
+class Player:
+    """
+        Класс, содержащий полную информацию о игроке: \n
+        - ссылка на стим (еще не проверял) \n
+        - активный сервер \n
+        - последнее появление в сети и т.д.
+    """
+    def __init__(
+            self, 
+            id: str, 
+            data: dict
+    ) -> None:
+        self._id: str = id
+        self._data: dict = data
+    # TODO: создать методы __str__ и сопутствующие обработки информации        
+
+
+class Server:
+    """
+        Класс-фабрика для создания серверов, соответствующих определенной игре
+    """
+    def __init__(
+            self, 
+            id: str,
+            data: dict
+    ) -> None:
+        self._id: str = id
+        self._data: dict = data
     
 
-class Server(Response):
+class ServerFactory:
 
-    def __init__(self) -> None:
-        super().__init__()
+    def get_server(
+            self, 
+            id: str,
+            data: dict
+    ) -> Server:
+        game_id: str = data.get('data').get('relationships').\
+            get('game').get('data').get('id')
+        if game_id == 'rust':
+            return RustServer(id, data)
 
 
 class RustServer(Server):
+    # TODO: переписать класс с использование метода initialize в 
+    # качестве protected для метода __init__
     """
         Класс данных с основной информацией о сервере в игре Rust
     """
-    def __init__(self) -> None:
-        self._server_name = None
-        self._server_id = None
-        self._server_status = None
-        self._server_address = None
-        self._server_ip = None
-        self._server_port = None
-        self._server_cur_players = None
-        self._server_max_players = None
-        self._server_queued_players = None
-        self._server_last_wipe = None
-        self._server_pve = None
-        self._server_url = None
-        self._server_map_url = None
-        self._server_map_thumbnailUrl = None
-        self._server_game_type = None
-        self._server_game_id = None
-
-    def initialize(
+    def __init__(
             self,
-            server_data: dict
+            id: str,
+            data: dict
     ) -> None:
-        data: dict = server_data.get('data')
+        
+        super().__init__(id, data)
+
+        self._server_name: str = ''
+        self._server_status: str = ''
+        self._server_address: str = ''
+        self._server_ip: str = ''
+        self._server_port: int = 0
+        self._server_cur_players: int = 0
+        self._server_max_players: int = 0
+        self._server_queued_players: int = 0
+        self._server_last_wipe: str = ''
+        self._server_pve: bool = False
+        self._server_url: str = ''
+        self._server_map_url: str = ''
+        self._server_map_thumbnailUrl: str = ''
+
+        self._initialize()
+
+    def _initialize(self) -> None:
+
+        data: dict = self._data.get('data')
         if data != None:
             attributes: dict = data.get('attributes')
             if attributes != None:
@@ -57,8 +104,10 @@ class RustServer(Server):
 
             details: dict = attributes.get('details')
             if details != None:
-                self._server_queued_players: int = details.get('rust_queued_players')
-                self._server_last_wipe: str = details.get('rust_last_wipe').replace('T', ' ')
+                self._server_queued_players: int = \
+                    details.get('rust_queued_players')
+                self._server_last_wipe: str = details.get('rust_last_wipe').\
+                    replace('T', ' ')
                 self._server_pve: bool = details.get('pve')
                 self._server_url: str = details.get('rust_url')                
 
@@ -66,11 +115,6 @@ class RustServer(Server):
             if rust_maps != None:
                 self._server_map_url: str = rust_maps.get('url')
                 self._server_map_thumbnailUrl: str = rust_maps.get('thumbnailUrl')
-
-            relationships_data: dict = data.get('relationships').get('game').get('data')
-            if relationships_data != None:
-                self._server_game_type: str = relationships_data.get('type')
-                self._server_game_id: str = relationships_data.get('id')
 
     def __str__(self) -> str:
         return f'Игра: {self._server_game_id}\
@@ -83,5 +127,7 @@ class RustServer(Server):
             \n\nАдрес сайта: {self._server_url}\
             \nИнтерактивная карта сервера: {self._server_map_url}\
             \nИзображение карты: {self._server_map_thumbnailUrl}\
-            \n\nКоманда для подключения: client.connect {self._server_ip}:{self._server_port}\
-            \nАльтернативная команда для подключения: client.connect {self._server_address}'
+            \n\nКоманда для подключения: client.connect \
+            {self._server_ip}:{self._server_port}\
+            \nАльтернативная команда для подключения: client.connect \
+            {self._server_address}'

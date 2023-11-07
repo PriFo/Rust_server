@@ -1,3 +1,5 @@
+
+# Good data
 {
     'data': {
         'type': 'server', 
@@ -72,4 +74,15 @@
         }
     }, 
     'included': []
+}
+
+# Error data
+{
+    'errors': [
+        {
+            'status': 401, 
+            'title': 'Unauthorized', 
+            'detail': 'The authentication token provided is invalid or expired.'
+        }
+    ]
 }

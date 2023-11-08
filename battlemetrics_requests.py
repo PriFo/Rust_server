@@ -10,13 +10,22 @@ import aiofiles
 from os import getenv
 
 
+class EPartions:
+    
+    servers: str = '/servers/'
+    players: str = '/players/'
+
+
 class BattleMetricsResponse:
 
     def __init__(self) -> None:
-        self._url: str = "https://api.battlemetrics.com/servers/"
+        self._url: str = "https://api.battlemetrics.com"
+        self._servers_url: str = "https://api.battlemetrics.com/servers/"
+        self._players_url: str = "https://api.battlemetrics.com/players/"
         self._headers: dict = {}
         self._api_key: str = ''
         self._servers: dict = {}
+        self._players: dict = {}
     
     async def _async_read_file_as_dict(self, file_path) -> dict:
         async with aiofiles.open(file=file_path, mode='r', encoding='utf-8') as file:
@@ -27,7 +36,7 @@ class BattleMetricsResponse:
         
         self._api_key = getenv('BM_API_KEY')
 
-        self._servers = await self._async_read_file_as_dict('servers.json')
+        self._servers = await self._async_read_file_as_dict('jsons/servers.json')
 
         self._headers['Authorization'] = f'Bearer {self._api_key}'
 
@@ -38,7 +47,7 @@ class BattleMetricsResponse:
             
             #Синхронный запрос данных от API
             response: Response = session_get(
-                url=self._url + self._servers.get(key), 
+                url=self._servers_url + self._servers.get(key), 
                 headers=self._headers
             )
 
@@ -67,7 +76,7 @@ class BattleMetricsResponse:
         for key in self._servers.keys():
             async with ClientSession() as session:
                 async with session.get(
-                    url=self._url + self._servers.get(key), 
+                    url=self._servers_url + self._servers.get(key), 
                     headers=self._headers
                 ) as response:
 

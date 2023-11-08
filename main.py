@@ -28,7 +28,9 @@ async def async_main() -> str:
 
 
 if __name__ == '__main__':
+    # TODO: добавление задач об обновлении информации в фреймворке в бота для запуска отдельных задач
     load_env()
     loop = asyncio.get_event_loop()
     result = loop.run_until_complete(async_main())
     print(result)
+    

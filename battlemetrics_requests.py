@@ -94,10 +94,3 @@ class BattleMetricsResponse:
                         servers_list.append(server)
 
         return servers_list
-    
-    async def update_info(self):
-
-        return
-    
-    def _isrust(self, server_data: dict) -> bool:
-        return server_data.get('data').get('relationships').get('game').get('data').get('id') == 'rust'

@@ -1,3 +1,4 @@
+
 class Response:
     def __init__(self, data: dict) -> None:
         self._type: str = data.get("data").get("type")
@@ -29,14 +30,22 @@ class Player:
 
 class Server:
     """
-    Класс-фабрика для создания серверов, соответствующих определенной игре
+    Класс-родитель для всех остальных классов с информацией о сервере
     """
 
     def __init__(self, id: str, data: dict) -> None:
         self._id: str = id
         self._data: dict = data
         self._name: str = self._data.get('name')
-        self._
+        self._status: str = self._data.get('status')
+        self._players: int = self._data.get('players')
+        self._max_players: int = self._data.get('maxPlayers')
+        self._ip: str = self._data.get('ip')
+        self._port: int = self._data.get('port')
+        self._private: bool = self._data.get('private')
+        self._query_status: str = self._data.get('queryStatus')
+        self._country: str = self._data.get('country')
+        self._address: str = self._data.get('address')
 
 
 class RustServer(Server):
@@ -49,14 +58,7 @@ class RustServer(Server):
     def __init__(self, id: str, data: dict) -> None:
         # инициализация основной информации по серверу
         super().__init__(id, data)
-        #
-        self._server_name: str = ""
-        self._server_status: str = ""
-        self._server_address: str = ""
-        self._server_ip: str = ""
-        self._server_port: int = 0
-        self._server_cur_players: int = 0
-        self._server_max_players: int = 0
+        # инициализация данных сервера rust
         self._server_queued_players: int = 0
         self._server_last_wipe: str = ""
         self._server_pve: bool = False
@@ -69,48 +71,22 @@ class RustServer(Server):
     def _initialize(self) -> None:
 
         # Получение информации о сервере
-        server_data: dict = self._data.get("data")
-        if server_data != None:
-            attributes: dict = server_data.get("attributes")
-            if attributes != None:
-                self._server_name: str = attributes.get("name")
-                self._server_id: str = attributes.get("id")
-                self._server_status: str = attributes.get("status")
-                self._server_address: str = attributes.get("address")
-                self._server_ip: str = attributes.get("ip")
-                self._server_port: int = attributes.get("port")
-                self._server_cur_players: int = attributes.get("players")
-                self._server_max_players: int = attributes.get("maxPlayers")
+        details: dict = self._data.get("details")
+        if details != None:
+            self._server_queued_players: int = details.get("rust_queued_players")
+            self._server_last_wipe: str = details.get("rust_last_wipe").replace(
+                "T", " "
+            )
+            self._server_pve: bool = details.get("pve")
+            self._server_url: str = details.get("rust_url")
 
-            details: dict = attributes.get("details")
-            if details != None:
-                self._server_queued_players: int = details.get("rust_queued_players")
-                self._server_last_wipe: str = details.get("rust_last_wipe").replace(
-                    "T", " "
-                )
-                self._server_pve: bool = details.get("pve")
-                self._server_url: str = details.get("rust_url")
-
-            rust_maps: dict = details.get("rust_maps")
-            if rust_maps != None:
-                self._server_map_url: str = rust_maps.get("url")
-                self._server_map_thumbnailUrl: str = rust_maps.get("thumbnailUrl")
+        rust_maps: dict = details.get("rust_maps")
+        if rust_maps != None:
+            self._server_map_url: str = rust_maps.get("url")
+            self._server_map_thumbnailUrl: str = rust_maps.get("thumbnailUrl")
 
     def __str__(self) -> str:
-        return f'Игра: {self._server_game_id}\
-            \nНазвание: {self._server_name}\
-            \nСтатус: {self._server_status}\
-            \nИгроки: {self._server_cur_players}/{self._server_max_players}\
-            \nОчередь: {self._server_queued_players} игроков\
-            \nПоследний вайп: {self._server_last_wipe}\
-            \nPVE: {"ДА" if self._server_pve else "НЕТ"}\
-            \n\nАдрес сайта: {self._server_url}\
-            \nИнтерактивная карта сервера: {self._server_map_url}\
-            \nИзображение карты: {self._server_map_thumbnailUrl}\
-            \n\nКоманда для подключения: client.connect \
-            {self._server_ip}:{self._server_port}\
-            \nАльтернативная команда для подключения: client.connect \
-            {self._server_address}'
+        return ''
 
 
 class ServerFactory:

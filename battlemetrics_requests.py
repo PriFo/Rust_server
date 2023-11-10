@@ -1,6 +1,7 @@
 
 from errorresponse import ErrorResponse as ER
 from server import Response as resp
+from server import Player, Server, RustServer
 from requests import Response
 from requests import get as session_get
 from json import load as make_dict_from_file
@@ -10,12 +11,15 @@ import aiofiles
 from os import getenv
 
 
-class EPartions:
+class EPartitions:
     
     servers: str = '/servers/'
     players: str = '/players/'
 
-
+# TODO: переписать под использование перечислений из класса EPartitions
+# TODO: дописать методы для обработки информации об игроках
+# TODO: написать управляющий класс для BattleMetricsResponse и разграничить модель данных с управляющей частью
+# TODO: перейти к архитектуре MVC
 class BattleMetricsResponse:
 
     def __init__(self) -> None:
@@ -56,7 +60,11 @@ class BattleMetricsResponse:
                 server_data: dict = dict(response.json())
                 
                 # TODO: добавить использование фабрики для создания сервера
-                ...
+                object_getter: resp = resp(server_data)
+                some_obj = resp.get_object()
+                if type(some_obj) == Server:
+                    if type(some_obj) == RustServer:
+                        self._servers[some_obj.name] = some_obj
 
             else:
                 # создаем объект класса ErrorResponse из-за вернувшейся ошибки
@@ -84,6 +92,11 @@ class BattleMetricsResponse:
                     if response.status == 200:
                         server_data: dict = dict(await response.json())
                         # TODO: добавить использование фабрики для создания сервера
+                        object_getter: resp = resp(server_data)
+                        some_obj = resp.get_object()
+                        if type(some_obj) == Server:
+                            if type(some_obj) == RustServer:
+                                self._servers[some_obj.name] = some_obj
                     else:
                         server = ER()
                         server.initialize(
@@ -94,3 +107,14 @@ class BattleMetricsResponse:
                         servers_list.append(server)
 
         return servers_list
+
+
+class BattleMetricsController:
+
+    def __init__(self) -> None:
+        self._servers_json_path: str = 'jsons/servers.json'
+        self._url: str = ''
+        self._bm_response: BattleMetricsResponse = BattleMetricsResponse()
+
+    def update_info(self) -> None:
+        pass

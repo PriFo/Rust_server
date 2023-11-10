@@ -1,18 +1,6 @@
 
-class Response:
-    def __init__(self, data: dict) -> None:
-        self._type: str = data.get("data").get("type")
-        self._id: str = data.get("data").get("id")
-        self._data: dict = data.get('attributes')
-
-    def get_object(self):
-        """Метод, возвращающий объект по заданному типу"""
-        if self._type == "player":
-            return Player(self._id, self._data)
-        elif self._type == "server":
-            return Server(self._id, self._data).get_server()
-
-
+# TODO: Прописать метод для работы с серверами (хранение информации об /
+# активных серверах без хранения всей информации о серверере)
 class Player:
     """
     Класс, содержащий полную информацию о игроке: \n
@@ -24,8 +12,14 @@ class Player:
     def __init__(self, id: str, data: dict) -> None:
         self._id: str = id
         self._data: dict = data
+        self._name: str = self._data.get('name')
+        self._private: bool = self._data.get('private')
+        self._positiveMatch: bool = self._data.get('positiveMatch')
 
-    # TODO: создать методы __str__ и сопутствующие обработке информации
+    def __str__(self) -> str:
+        return f'Игрок: {self._name}\n \
+            Приватный профиль: {"Да" if self._private else "Нет"}\n \
+            Прямое получение данных с серверов: {"Да" if self._positiveMatch else "Нет"}'
 
 
 class Server:
@@ -47,10 +41,12 @@ class Server:
         self._country: str = self._data.get('country')
         self._address: str = self._data.get('address')
 
+    @property
+    def name(self) -> str:
+        return self._name
+
 
 class RustServer(Server):
-    # TODO: переписать класс с использование метода initialize в
-    # качестве protected для метода __init__
     """
     Класс данных с основной информацией о сервере в игре Rust
     """
@@ -86,7 +82,18 @@ class RustServer(Server):
             self._server_map_thumbnailUrl: str = rust_maps.get("thumbnailUrl")
 
     def __str__(self) -> str:
-        return ''
+        return f'Игра: Rust\n\n \
+            Название: {self._name}\n \
+            Приватный севрер: {"Да" if self._private else "Нет"}\n \
+            Страна: {self._country}\n \
+            Статус: {self._status}\n \
+            Игроки: {self._players}/{self._max_players} ({self._server_queued_players})\n \
+            Последний вайп: {self._server_last_wipe}\n \
+            PVE: {"Да" if self._server_pve else "Нет"}\n\n \
+            Адрес сервера: {self._server_url}\n \
+            Интерактивная карта сервера: {self._server_map_url}\n \
+            Изображение карты сервера: {self._server_map_thumbnailUrl}\n\n \
+            Команда для подключения по IP: {self._ip}:{self._port}'
 
 
 class ServerFactory:
@@ -97,3 +104,17 @@ class ServerFactory:
 
     def _get_game_id(self, data: dict) -> str:
         return data.get("data").get("relationships").get("game").get("data").get("id")
+
+
+class Response:
+    def __init__(self, data: dict) -> None:
+        self._type: str = data.get("data").get("type")
+        self._id: str = data.get("data").get("id")
+        self._data: dict = data.get('attributes')
+
+    def get_object(self) -> (Player, Server):
+        """Метод, возвращающий объект по заданному типу"""
+        if self._type == "player":
+            return Player(self._id, self._data)
+        elif self._type == "server":
+            return ServerFactory().get_server(self._id, self._data)

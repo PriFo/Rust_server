@@ -1,5 +1,6 @@
 
 # Good data
+# from {base_url}/servers/{server_id}
 {
     'data': {
         'type': 'server', 
@@ -77,6 +78,7 @@
 }
 
 # Error data
+# Example
 {
     'errors': [
         {

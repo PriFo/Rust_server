@@ -100,17 +100,17 @@ class ServerFactory:
     def get_server(self, id: str, data: dict) -> Server:
         game_id: str = self._get_game_id(data)
         if game_id == "rust":
-            return RustServer(id, data)
+            return RustServer(id, data.get('attributes'))
 
     def _get_game_id(self, data: dict) -> str:
-        return data.get("data").get("relationships").get("game").get("data").get("id")
+        return data.get("relationships").get("game").get("data").get("id")
 
 
 class Response:
     def __init__(self, data: dict) -> None:
         self._type: str = data.get("data").get("type")
         self._id: str = data.get("data").get("id")
-        self._data: dict = data.get('attributes')
+        self._data: dict = data.get('data')
 
     def get_object(self) -> (Player, Server):
         """Метод, возвращающий объект по заданному типу"""

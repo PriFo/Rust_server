@@ -21,7 +21,7 @@ async def start_message(message: Message):
                          информацией отправь /help.')
     
 
-
+@dp.message(command='help')
 async def help_message(message: Message):
     await message.answer(f'')
 

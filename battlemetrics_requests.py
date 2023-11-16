@@ -2,13 +2,13 @@
 from errorresponse import ErrorResponse as ER
 from server import Response as resp
 from server import Player, Server, RustServer
-from requests import Response
-from requests import get as session_get
-from json import load as make_dict_from_file
 from json import loads as make_dict_from_str
+
 from aiohttp import ClientSession
 import aiofiles
 from os import getenv
+from asyncio import sleep as aSleep
+from asyncio import create_task, gather
 
 
 class EPartitions:
@@ -43,70 +43,43 @@ class BattleMetricsResponse:
         self._servers = await self._async_read_file_as_dict('jsons/servers.json')
 
         self._headers['Authorization'] = f'Bearer {self._api_key}'
-
-    def get_all_servers(self) -> list:
-        servers_list: list = []
-
-        for key in self._servers.keys():
-            
-            #Синхронный запрос данных от API
-            response: Response = session_get(
-                url=self._servers_url + self._servers.get(key), 
-                headers=self._headers
-            )
-
-            # Заполнение данных в список
-            if response.status_code == 200:
-                server_data: dict = dict(response.json())
-                
-                # TODO: добавить использование фабрики для создания сервера
-                object_getter: resp = resp(server_data)
-                some_obj = resp.get_object()
-                if type(some_obj) == Server:
-                    if type(some_obj) == RustServer:
-                        self._servers[some_obj.name] = some_obj
-
-            else:
-                # создаем объект класса ErrorResponse из-за вернувшейся ошибки
-                server = ER()
-                server.initialize(
-                    code=response.status_code, 
-                    key=key, 
-                    id=self._servers.get(key)
-                )
-                servers_list.append(server)
-
-        return servers_list
     
     async def async_get_all_servers(self) -> list:
         servers_list: list = []
+        servers_tasks: list = []
+        async with ClientSession() as session:
+            
+            for key in self._servers.keys():
+                servers_tasks.append(create_task(self._get_server_info(session, key)))
 
-        for key in self._servers.keys():
-            async with ClientSession() as session:
-                async with session.get(
-                    url=self._servers_url + self._servers.get(key), 
-                    headers=self._headers
-                ) as response:
-
-                    # Заполнение данных в список
-                    if response.status == 200:
-                        server_data: dict = dict(await response.json())
-                        # TODO: добавить использование фабрики для создания сервера
-                        object_getter: resp = resp(server_data)
-                        some_obj = resp.get_object()
-                        if type(some_obj) == Server:
-                            if type(some_obj) == RustServer:
-                                self._servers[some_obj.name] = some_obj
-                    else:
-                        server = ER()
-                        server.initialize(
-                            code=response.status, 
-                            key=key, 
-                            id=self._servers.get(key)
-                        )
-                        servers_list.append(server)
+            print("Keys: OK!")
+            # BUG не запускает Future
+            servers_list = await gather(*servers_tasks)
 
         return servers_list
+    
+    async def _get_server_info(self, session, server: str) -> (Server, ER):
+        
+        async with session.get(
+            url=self._servers_url + self._servers.get(server), 
+            headers=self._headers
+        ) as response:
+            
+            # Заполнение данных в список
+            if response.status == 200:
+                server_data: dict = dict(await response.json())
+                # TODO: добавить использование фабрики для создания сервера
+                object_getter: resp = resp(server_data)
+                some_obj = object_getter.get_object()
+                if type(some_obj) == Server:
+                    if type(some_obj) == RustServer:
+                        return some_obj
+            else:
+                server = ER()
+                server.initialize(
+                    data=dict(await response.json())
+                )
+                return server
 
 
 class BattleMetricsController:
@@ -115,6 +88,14 @@ class BattleMetricsController:
         self._servers_json_path: str = 'jsons/servers.json'
         self._url: str = ''
         self._bm_response: BattleMetricsResponse = BattleMetricsResponse()
+        self._servers_info: list = []
 
-    def update_info(self) -> None:
-        pass
+    async def update_info(self, delay: int = 5) -> None:
+        await self._bm_response.async_initialize()
+        self._servers_info = await self._bm_response.get_all_servers()
+        last_info: list = self._servers_info
+        while True:
+            await aSleep(delay)
+            self._servers_info = await self._bm_response.get_all_servers()
+            if last_info != self._servers_info:
+                pass

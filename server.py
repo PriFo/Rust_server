@@ -27,7 +27,7 @@ class Server:
     Класс-родитель для всех остальных классов с информацией о сервере
     """
 
-    def __init__(self, id: str, data: dict) -> None:
+    def __init__(self, id: str, data: dict, game_id: str) -> None:
         self._id: str = id
         self._data: dict = data
         self._name: str = self._data.get('name')
@@ -40,10 +40,15 @@ class Server:
         self._query_status: str = self._data.get('queryStatus')
         self._country: str = self._data.get('country')
         self._address: str = self._data.get('address')
+        self._game_id: str = game_id
 
     @property
     def name(self) -> str:
         return self._name
+    
+    @property
+    def game_id(self) -> str:
+        return self._game_id
 
 
 class RustServer(Server):
@@ -51,9 +56,9 @@ class RustServer(Server):
     Класс данных с основной информацией о сервере в игре Rust
     """
 
-    def __init__(self, id: str, data: dict) -> None:
+    def __init__(self, id: str, data: dict, game_id: str) -> None:
         # инициализация основной информации по серверу
-        super().__init__(id, data)
+        super().__init__(id, data, game_id)
         # инициализация данных сервера rust
         self._server_queued_players: int = 0
         self._server_last_wipe: str = ""
@@ -100,7 +105,7 @@ class ServerFactory:
     def get_server(self, id: str, data: dict) -> Server:
         game_id: str = self._get_game_id(data)
         if game_id == "rust":
-            return RustServer(id, data.get('attributes'))
+            return RustServer(id, data.get('attributes'), game_id)
 
     def _get_game_id(self, data: dict) -> str:
         return data.get("relationships").get("game").get("data").get("id")

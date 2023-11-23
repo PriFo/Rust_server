@@ -52,14 +52,19 @@ class BattleMetricsResponse:
             for key in self._servers.keys():
                 servers_tasks.append(create_task(self._get_server_info(session, key)))
 
-            print("Keys: OK!")
+            # print("Keys: OK!")
             # BUG не запускает Future
-            servers_list = await gather(*servers_tasks)
+            try:
+                servers_list = await gather(*servers_tasks)
+            except RuntimeError:
+                print('Something wrong in getting servers')
+            print(f"Servers: {servers_list}")
 
         return servers_list
     
     async def _get_server_info(self, session, server: str) -> (Server, ER):
-        
+        some_obj = None
+
         async with session.get(
             url=self._servers_url + self._servers.get(server), 
             headers=self._headers
@@ -67,19 +72,21 @@ class BattleMetricsResponse:
             
             # Заполнение данных в список
             if response.status == 200:
+                # print(f"{server}: OK!")
                 server_data: dict = dict(await response.json())
                 # TODO: добавить использование фабрики для создания сервера
                 object_getter: resp = resp(server_data)
                 some_obj = object_getter.get_object()
-                if type(some_obj) == Server:
-                    if type(some_obj) == RustServer:
-                        return some_obj
+                # print(f"get_obj: ok!")
+                if some_obj.game_id == 'rust':
+                    return some_obj
             else:
-                server = ER()
-                server.initialize(
+                some_obj = ER()
+                some_obj.initialize(
                     data=dict(await response.json())
                 )
-                return server
+
+        return some_obj
 
 
 class BattleMetricsController:
@@ -90,12 +97,37 @@ class BattleMetricsController:
         self._bm_response: BattleMetricsResponse = BattleMetricsResponse()
         self._servers_info: list = []
 
+    async def _get_server_data(self, file_name: str) -> dict:
+        async with aiofiles.open(file=file_name, mode='r', encoding='utf-8') as file:
+            content = await file.read()
+            return make_dict_from_str(content)
+
+    async def test_find_differences(self) -> dict:
+        server_info: dict = await self._get_server_data('jsons/server_data.json')
+        changed_server_info: dict = await self._get_server_data('jsons/server_data_changed.json')
+        return await self._find_differences_in_dicts(server_info, changed_server_info)
+
     async def update_info(self, delay: int = 5) -> None:
         await self._bm_response.async_initialize()
-        self._servers_info = await self._bm_response.get_all_servers()
+        self._servers_info = await self._bm_response.async_get_all_servers()
         last_info: list = self._servers_info
         while True:
             await aSleep(delay)
-            self._servers_info = await self._bm_response.get_all_servers()
+            self._servers_info = await self._bm_response.async_get_all_servers()
             if last_info != self._servers_info:
-                pass
+                await self._find_differences(last_info)
+
+    async def _find_differences(self, last_info: list) -> list:
+        # TODO: написать функцию поиска различий между словарями
+        tasks: list = []
+        for last_server_info, server_info in last_info, self._server_info:
+            tasks.append(create_task(self._find_differences_in_dicts(last_server_info, server_info)))
+        differences: list = await gather(*tasks)
+        return differences
+
+    async def _find_differences_in_dicts(self, last_server_info: dict, server_info: dict, steps=2) -> dict:
+        
+        if steps != 0:
+            return {steps: await self._find_differences_in_dicts(last_server_info, server_info, steps=steps-1)}
+        else:
+            return {steps: last_server_info}

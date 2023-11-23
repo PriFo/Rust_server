@@ -1,0 +1,75 @@
+{
+    "data": {
+        "type": "server", 
+        "id": "9255283", 
+        "attributes": {
+            "id": "9255283", 
+            "name": "Rustoria.co - EU Main", 
+            "address": "main.rustoria.uk", 
+            "ip": "208.103.169.246", 
+            "port": 28010, 
+            "players": 750, 
+            "maxPlayers": 825, 
+            "rank": 3, 
+            "location": [-0.093, 51.5164], 
+            "status": "online", 
+            "details": {
+                "official": "True", 
+                "rust_type": "official", 
+                "map": "Rustoria Map Generation", 
+                "environment": "w", 
+                "rust_build": "88182", 
+                "rust_ent_cnt_i": 174700, 
+                "rust_fps": 24, 
+                "rust_fps_avg": 24.13, 
+                "rust_gc_cl": 338, 
+                "rust_gc_mb": 4670, 
+                "rust_hash": "b8a50690", 
+                "rust_headerimage": "https://i.imgur.com/eDuqSUf.png", 
+                "rust_mem_pv": "None", 
+                "rust_mem_ws": "None", 
+                "pve": "False", 
+                "rust_uptime": 15552, 
+                "rust_url": "http://rustoria.co", 
+                "rust_world_seed": 37631, 
+                "rust_world_size": 4250, 
+                "rust_world_levelurl": "https://cdn.rustoria.co/maps/240/18c87c6d491848ff8abb42b82749e9e7/procedural__4250_saNpT38ZiUq4sklKnCXxlA.map", 
+                "rust_maps": {
+                    "seed": 37631, 
+                    "size": 4250, 
+                    "url": "https://rustmaps.com/map/52bd5fc3cf44451b997a30561d496747", 
+                    "thumbnailUrl": "https://content.rustmaps.com/maps/240/52bd5fc3cf44451b997a30561d496747/thumbnail.png", 
+                    "monuments": 152, 
+                    "barren": "False", 
+                    "updatedAt": "2023-10-05T19:10:44.570Z", 
+                    "mapUrl": "https://cdn.rustoria.co/maps/240/18c87c6d491848ff8abb42b82749e9e7/procedural__4250_saNpT38ZiUq4sklKnCXxlA.map"
+                }, 
+                "rust_description": "Wipe Schedule:\n\\tMap - Thursdays @ 3PM UK / 4PM CEST, or when force updates occur.\n\\tBPs - Monthly @ Force\n\nVIP: donate.rustoria.co\n\nRules:\n\\t- No hacking / scripting\n\\t- No intentional bug abuse\n\\t- No EAC / FP banned alts\n\\t- No ban evading\n\\t- No racism\n\nGood performance\nActive non playing admins\nSeeds are carefully picked\n\nDiscord: rustoria.co/discord\nFull rules: rustoria.co/vanilla/rules", 
+                "rust_modded": "False", 
+                "rust_queued_players": 0, 
+                "rust_gamemode": "standard", 
+                "rust_born": "2023-10-05T17:56:59.000Z", 
+                "rust_last_ent_drop": "2023-09-21T14:29:06.448Z", 
+                "rust_last_seed_change": "2022-03-24T15:27:59.853Z", 
+                "rust_last_wipe": "2023-09-21T14:29:06.448Z", 
+                "rust_last_wipe_ent": 118534, 
+                "serverSteamId": "90176934445280283"
+            }, 
+            "private": "False", 
+            "createdAt": "2020-11-30T17:12:38.318Z", 
+            "updatedAt": "2023-10-05T22:09:49.635Z", 
+            "portQuery": 28015, 
+            "country": "GB", 
+            "queryStatus": "valid"
+        }, 
+        "relationships": {
+            "game": {
+                "data": {
+                    "type": "game", 
+                    "id": "rust"
+                }
+            }
+        }
+    }, 
+    "included": []
+}

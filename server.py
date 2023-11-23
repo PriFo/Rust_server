@@ -29,17 +29,16 @@ class Server:
 
     def __init__(self, id: str, data: dict, game_id: str) -> None:
         self._id: str = id
-        self._data: dict = data
-        self._name: str = self._data.get('name')
-        self._status: str = self._data.get('status')
-        self._players: int = self._data.get('players')
-        self._max_players: int = self._data.get('maxPlayers')
-        self._ip: str = self._data.get('ip')
-        self._port: int = self._data.get('port')
-        self._private: bool = self._data.get('private')
-        self._query_status: str = self._data.get('queryStatus')
-        self._country: str = self._data.get('country')
-        self._address: str = self._data.get('address')
+        self._name: str = data.get('name')
+        self._status: str = data.get('status')
+        self._players: int = data.get('players')
+        self._max_players: int = data.get('maxPlayers')
+        self._ip: str = data.get('ip')
+        self._port: int = data.get('port')
+        self._private: bool = data.get('private')
+        self._query_status: str = data.get('queryStatus')
+        self._country: str = data.get('country')
+        self._address: str = data.get('address')
         self._game_id: str = game_id
 
     @property
@@ -67,12 +66,12 @@ class RustServer(Server):
         self._server_map_url: str = ""
         self._server_map_thumbnailUrl: str = ""
 
-        self._initialize()
+        self._initialize(data)
 
-    def _initialize(self) -> None:
+    def _initialize(self, data: dict) -> None:
 
         # Получение информации о сервере
-        details: dict = self._data.get("details")
+        details: dict = data.get("details")
         if details != None:
             self._server_queued_players: int = details.get("rust_queued_players")
             self._server_last_wipe: str = details.get("rust_last_wipe").replace(

@@ -22,9 +22,8 @@ async def get_tasks(delay: int = 5) -> list:
 async def async_main() -> str:
     # print("Servers: OK!")
     # asyncio.gather(*await get_tasks())
-    controller = BattleMetricsController()
-    result = await controller.test_find_differences()
-    print(result)
+    await asyncio.gather(*await get_tasks())
+    
 
 
 if __name__ == '__main__':

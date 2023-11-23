@@ -44,7 +44,7 @@ class BattleMetricsResponse:
 
         self._headers['Authorization'] = f'Bearer {self._api_key}'
     
-    async def async_get_all_servers(self) -> list:
+    async def async_get_all_servers(self) -> dict:
         servers_list: list = []
         servers_tasks: list = []
         async with ClientSession() as session:
@@ -53,14 +53,12 @@ class BattleMetricsResponse:
                 servers_tasks.append(create_task(self._get_server_info(session, key)))
 
             # print("Keys: OK!")
-            # BUG не запускает Future
-            try:
-                servers_list = await gather(*servers_tasks)
-            except RuntimeError:
-                print('Something wrong in getting servers')
-            print(f"Servers: {servers_list}")
+            servers_list = await gather(*servers_tasks)
+            # print(f"Servers: {servers_list}")
 
-        return servers_list
+        servers_dict: dict = {class_obj.name: class_obj for class_obj in servers_list}
+
+        return servers_dict
     
     async def _get_server_info(self, session, server: str) -> (Server, ER):
         some_obj = None
@@ -85,7 +83,7 @@ class BattleMetricsResponse:
                 some_obj.initialize(
                     data=dict(await response.json())
                 )
-
+    
         return some_obj
 
 
@@ -95,39 +93,37 @@ class BattleMetricsController:
         self._servers_json_path: str = 'jsons/servers.json'
         self._url: str = ''
         self._bm_response: BattleMetricsResponse = BattleMetricsResponse()
-        self._servers_info: list = []
-
-    async def _get_server_data(self, file_name: str) -> dict:
-        async with aiofiles.open(file=file_name, mode='r', encoding='utf-8') as file:
-            content = await file.read()
-            return make_dict_from_str(content)
-
-    async def test_find_differences(self) -> dict:
-        server_info: dict = await self._get_server_data('jsons/server_data.json')
-        changed_server_info: dict = await self._get_server_data('jsons/server_data_changed.json')
-        return await self._find_differences_in_dicts(server_info, changed_server_info)
+        self._servers_info: dict = {}
 
     async def update_info(self, delay: int = 5) -> None:
         await self._bm_response.async_initialize()
         self._servers_info = await self._bm_response.async_get_all_servers()
-        last_info: list = self._servers_info
+
+        last_info: dict = self._servers_info
         while True:
             await aSleep(delay)
             self._servers_info = await self._bm_response.async_get_all_servers()
-            if last_info != self._servers_info:
-                await self._find_differences(last_info)
+            differences: list = await self._find_differences_servers(last_info)
+            print(differences, end='\n\n\n')
+            last_info = self._servers_info
 
-    async def _find_differences(self, last_info: list) -> list:
+    async def _find_differences_servers(self, last_info: dict) -> list:
         # TODO: написать функцию поиска различий между словарями
         tasks: list = []
-        for last_server_info, server_info in last_info, self._server_info:
-            tasks.append(create_task(self._find_differences_in_dicts(last_server_info, server_info)))
+        
+        for key in self._servers_info:
+            if last_info[key].__dict__ != self._servers_info[key].__dict__:
+                tasks.append(
+                    create_task(
+                        self.__find_differences_in_servers(
+                            last_info[key], self._servers_info[key]
+                        )
+                    )
+                )
         differences: list = await gather(*tasks)
         return differences
 
-    async def _find_differences_in_dicts(self, last_server_info: dict, server_info: dict, steps=2) -> dict:
-        
-        if steps != 0:
-            return {steps: await self._find_differences_in_dicts(last_server_info, server_info, steps=steps-1)}
-        else:
-            return {steps: last_server_info}
+    async def __find_differences_in_servers(self, last_server_info: Server, server_info: Server) -> list:
+        difference: list = set(last_server_info.__dict__.items()) ^ set(server_info.__dict__.items())
+        print(f'\n\nDifference in {last_server_info.name} and {server_info.name}:\n{difference}\n')
+        return difference

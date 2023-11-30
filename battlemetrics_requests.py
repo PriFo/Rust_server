@@ -1,7 +1,7 @@
 
 from errorresponse import ErrorResponse as ER
-from server import Response as resp
-from server import Player, Server, RustServer
+from data_classes import Response as resp
+from data_classes import Server
 from json import loads as make_dict_from_str
 
 from aiohttp import ClientSession
@@ -112,7 +112,7 @@ class BattleMetricsController:
         tasks: list = []
         
         for key in self._servers_info:
-            if last_info[key].__dict__ != self._servers_info[key].__dict__:
+            if last_info[key] != self._servers_info[key]:
                 tasks.append(
                     create_task(
                         self.__find_differences_in_servers(

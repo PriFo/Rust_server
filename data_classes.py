@@ -98,7 +98,13 @@ class RustServer(Server):
             Интерактивная карта сервера: {self._server_map_url}\n \
             Изображение карты сервера: {self._server_map_thumbnailUrl}\n\n \
             Команда для подключения по IP: {self._ip}:{self._port}'
-
+    
+    def __eq__(self, __value: object) -> bool:
+        return self.__dict__ == __value.__dict__
+    
+    def __ne__(self, __value: object) -> bool:
+        return self.__dict__ != __value.__dict__
+        
 
 class ServerFactory:
     def get_server(self, id: str, data: dict) -> Server:
@@ -122,3 +128,9 @@ class Response:
             return Player(self._id, self._data)
         elif self._type == "server":
             return ServerFactory().get_server(self._id, self._data)
+
+
+class Profile:
+
+    def __init__(self) -> None:
+        pass

@@ -18,8 +18,6 @@ class EPartitions:
 
 # TODO: переписать под использование перечислений из класса EPartitions
 # TODO: дописать методы для обработки информации об игроках
-# TODO: написать управляющий класс для BattleMetricsResponse и разграничить модель данных с управляющей частью
-# TODO: перейти к архитектуре MVC
 class BattleMetricsResponse:
 
     def __init__(self) -> None:
@@ -108,7 +106,7 @@ class BattleMetricsController:
             last_info = self._servers_info
 
     async def _find_differences_servers(self, last_info: dict) -> list:
-        # TODO: написать функцию поиска различий между словарями
+        # TODO: написать функцию поиска различий между серверами
         tasks: list = []
         
         for key in self._servers_info:

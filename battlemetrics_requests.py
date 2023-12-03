@@ -2,6 +2,7 @@
 from errorresponse import ErrorResponse as ER
 from data_classes import Response as resp
 from data_classes import Server
+from dispatcher import Dispatcher
 from json import loads as make_dict_from_str
 
 from aiohttp import ClientSession
@@ -70,7 +71,6 @@ class BattleMetricsResponse:
             if response.status == 200:
                 # print(f"{server}: OK!")
                 server_data: dict = dict(await response.json())
-                # TODO: добавить использование фабрики для создания сервера
                 object_getter: resp = resp(server_data)
                 some_obj = object_getter.get_object()
                 # print(f"get_obj: ok!")
@@ -88,12 +88,14 @@ class BattleMetricsResponse:
 class BattleMetricsController:
 
     def __init__(self) -> None:
+        self._dp: Dispatcher = Dispatcher()
         self._servers_json_path: str = 'jsons/servers.json'
         self._url: str = ''
         self._bm_response: BattleMetricsResponse = BattleMetricsResponse()
         self._servers_info: dict = {}
 
     async def update_info(self, delay: int = 5) -> None:
+        # TODO: Обрабатывать ErrorResponse
         await self._bm_response.async_initialize()
         self._servers_info = await self._bm_response.async_get_all_servers()
 
@@ -101,12 +103,12 @@ class BattleMetricsController:
         while True:
             await aSleep(delay)
             self._servers_info = await self._bm_response.async_get_all_servers()
-            differences: list = await self._find_differences_servers(last_info)
-            print(differences, end='\n\n\n')
+            differences: list = await self._find_differences_servers(last_info=last_info)
             last_info = self._servers_info
+            self._dp.handle_differences(differences=differences)
+
 
     async def _find_differences_servers(self, last_info: dict) -> list:
-        # TODO: написать функцию поиска различий между серверами
         tasks: list = []
         
         for key in self._servers_info:
@@ -114,14 +116,20 @@ class BattleMetricsController:
                 tasks.append(
                     create_task(
                         self.__find_differences_in_servers(
-                            last_info[key], self._servers_info[key]
+                            last_server_info=last_info[key], server_info=self._servers_info[key]
                         )
                     )
                 )
         differences: list = await gather(*tasks)
         return differences
 
-    async def __find_differences_in_servers(self, last_server_info: Server, server_info: Server) -> list:
-        difference: list = set(last_server_info.__dict__.items()) ^ set(server_info.__dict__.items())
-        print(f'\n\nDifference in {last_server_info.name} and {server_info.name}:\n{difference}\n')
+    async def __find_differences_in_servers(self, last_server_info: Server, server_info: Server) -> dict:
+        difference_list: set = set(last_server_info.__dict__.items()) ^ set(server_info.__dict__.items())
+        difference: dict = {'name': last_server_info.name}
+        for item in difference_list:
+            if item[1] == last_server_info.__dict__[item[0]]:
+                difference['old'] = {item[0]: item[1]}
+            else:
+                difference['new'] = {item[0]: item[1]}
+        # print(f'\033[4m\033[34m{server_info.name=}:\033[0m\033[32m {difference}\033[37m')
         return difference

@@ -1,6 +1,4 @@
 
-# TODO: Прописать метод для работы с серверами (хранение информации об /
-# активных серверах без хранения всей информации о серверере)
 class Player:
     """
     Класс, содержащий полную информацию о игроке: \n
@@ -129,7 +127,7 @@ class Response:
         elif self._type == "server":
             return ServerFactory().get_server(self._id, self._data)
 
-
+# TODO: Прописать Filters и Profile
 class Profile:
 
     def __init__(self) -> None:

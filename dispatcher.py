@@ -10,4 +10,8 @@ class Dispatcher:
 
     def __init__(self, *args, **kwargs) -> None:
         self._filters: dict = {}
+
+    def handle_differences(self, differences: list) -> None:
+        for diff in differences:
+            print(f'\033[4m\033[34m{diff["name"]=}:\033[0m\033[32m {diff["new"]=}\033[37m')
         

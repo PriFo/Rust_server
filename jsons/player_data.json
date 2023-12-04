@@ -1,0 +1,347 @@
+{
+    "data": {
+        "type": "player",
+        "id": "1114445782",
+        "attributes": {
+            "id": "1114445782",
+            "name": "вареник.jpg",
+            "private": false,
+            "positiveMatch": true,
+            "createdAt": "2022-11-04T19:33:06.642Z",
+            "updatedAt": "2022-11-04T19:33:06.642Z"
+        },
+        "relationships": {}
+    },
+    "included": [
+        {
+            "type": "server",
+            "id": "840842",
+            "attributes": {
+                "id": "840842",
+                "name": "Rustafied.com - EU Small"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 13197,
+                "firstSeen": "2023-01-02T11:55:14.277Z",
+                "lastSeen": "2023-01-04T13:07:27.933Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "2933324",
+            "attributes": {
+                "id": "2933324",
+                "name": "Rusty Moose |US Main|"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 5428,
+                "firstSeen": "2022-11-25T18:32:34.653Z",
+                "lastSeen": "2022-11-25T20:03:03.047Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "2933685",
+            "attributes": {
+                "id": "2933685",
+                "name": "Rusty Moose |US Biweekly|"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 4360,
+                "firstSeen": "2022-11-04T19:33:06.642Z",
+                "lastSeen": "2022-11-04T20:46:59.859Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "3591957",
+            "attributes": {
+                "id": "3591957",
+                "name": "Reddit.com/r/PlayRust - EU Medium"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 36864,
+                "firstSeen": "2023-06-08T16:46:19.020Z",
+                "lastSeen": "2023-07-01T23:16:58.623Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "3766738",
+            "attributes": {
+                "id": "3766738",
+                "name": "Rusty Moose |EU Biweekly|"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 98493,
+                "firstSeen": "2023-02-10T18:30:39.256Z",
+                "lastSeen": "2023-02-16T00:26:08.876Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "4729828",
+            "attributes": {
+                "id": "4729828",
+                "name": "Rusty Moose |EU Main|"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 22332,
+                "firstSeen": "2023-02-23T18:14:18.631Z",
+                "lastSeen": "2023-07-10T19:51:12.999Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "4946321",
+            "attributes": {
+                "id": "4946321",
+                "name": "Reddit.com/r/PlayRust - EU Monday"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 11537,
+                "firstSeen": "2023-01-31T21:38:35.059Z",
+                "lastSeen": "2023-02-01T01:03:10.782Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "5866833",
+            "attributes": {
+                "id": "5866833",
+                "name": "Reddit.com/r/PlayRust - EU Main"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 33651,
+                "firstSeen": "2022-12-17T22:17:45.786Z",
+                "lastSeen": "2023-06-22T21:40:29.324Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "9255283",
+            "attributes": {
+                "id": "9255283",
+                "name": "Rustoria.co - EU Main"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 374147,
+                "firstSeen": "2023-01-10T17:43:27.618Z",
+                "lastSeen": "2023-10-29T23:08:21.747Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "9594571",
+            "attributes": {
+                "id": "9594571",
+                "name": "Rustoria.co - EU Long"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 39464,
+                "firstSeen": "2023-05-02T18:02:53.039Z",
+                "lastSeen": "2023-05-28T18:17:46.215Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "11378166",
+            "attributes": {
+                "id": "11378166",
+                "name": "Rusty Moose |EU Monthly|"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 11087,
+                "firstSeen": "2023-01-19T19:51:09.667Z",
+                "lastSeen": "2023-01-19T23:01:04.177Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "12369419",
+            "attributes": {
+                "id": "12369419",
+                "name": "Rustoria.co - EU Small"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 1750,
+                "firstSeen": "2023-07-12T12:49:08.231Z",
+                "lastSeen": "2023-07-12T13:18:18.457Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "13663705",
+            "attributes": {
+                "id": "13663705",
+                "name": "[EU] HollowServers.co - 2x Solo/Duo/Trio/Quad | FULL WIPED"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 61377,
+                "firstSeen": "2023-07-24T21:22:53.657Z",
+                "lastSeen": "2023-07-27T03:17:04.086Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "15070312",
+            "attributes": {
+                "id": "15070312",
+                "name": "[EU/ES] SINMAS DUO"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 104692,
+                "firstSeen": "2023-03-24T18:21:26.106Z",
+                "lastSeen": "2023-06-16T21:34:17.421Z",
+                "online": false
+            }
+        },
+        {
+            "type": "server",
+            "id": "18025027",
+            "attributes": {
+                "id": "18025027",
+                "name": "HollowServers.co - 3x Solo/Duo/Trio/Quad | FULL WIPED"
+            },
+            "relationships": {
+                "game": {
+                    "data": {
+                        "type": "game",
+                        "id": "rust"
+                    }
+                }
+            },
+            "meta": {
+                "timePlayed": 84543,
+                "firstSeen": "2023-09-27T19:42:07.671Z",
+                "lastSeen": "2023-11-24T23:06:39.325Z",
+                "online": false
+            }
+        }
+    ]
+}

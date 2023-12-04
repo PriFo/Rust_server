@@ -13,6 +13,7 @@ class Player:
         self._name: str = self._data.get('name')
         self._private: bool = self._data.get('private')
         self._positiveMatch: bool = self._data.get('positiveMatch')
+        self._player_servers: list = []
 
     def __str__(self) -> str:
         return f'Игрок: {self._name}\n \
@@ -127,8 +128,13 @@ class Response:
         elif self._type == "server":
             return ServerFactory().get_server(self._id, self._data)
 
-# TODO: Прописать Filters и Profile
+
+# TODO: Прописать Profile
 class Profile:
 
     def __init__(self) -> None:
         pass
+
+class Repository:
+    
+    pass

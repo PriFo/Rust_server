@@ -105,7 +105,7 @@ class BattleMetricsController:
             self._servers_info = await self._bm_response.async_get_all_servers()
             differences: list = await self._find_differences_servers(last_info=last_info)
             last_info = self._servers_info
-            self._dp.handle_differences(differences=differences)
+            await self._dp.handle_differences(differences=differences)
 
 
     async def _find_differences_servers(self, last_info: dict) -> list:

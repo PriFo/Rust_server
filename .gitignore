@@ -2,6 +2,5 @@
 /__pycache__
 /user_help_photos
 *.gitignore
-count_strings.py
 /txts
 /sqlite

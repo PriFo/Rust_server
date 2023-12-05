@@ -1,9 +1,0 @@
-Добавить фильтрацию request через параметры для получения данных 
-о игроках на сервере и данные о серверах, на которых сидит игрок
-
-https://api.battlemetrics.com/players/{player_id}
-Способы добавления данных через ?include={field_name}(легенда)
-
-Способ добавления дополнительных данных &fields[{data_name}]={field_name},{field_name},...,{field_name}
-
-Способ фильтрации через &filter[{filter_name}]={value}

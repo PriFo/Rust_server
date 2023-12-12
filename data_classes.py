@@ -1,3 +1,5 @@
+from filters import RustFilter
+
 
 class Player:
     """
@@ -129,12 +131,55 @@ class Response:
             return ServerFactory().get_server(self._id, self._data)
 
 
-# TODO: Прописать Profile
 class Profile:
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, *args, **kwargs) -> None:
+        
+        self._rustFilter: RustFilter = None
+        self._id: str = kwargs.get('id')
+        self._nickname: str = kwargs.get('nickname')
+        self._name: str = kwargs.get('name')
+        self._surname: str = kwargs.get('surname')
 
-class Repository:
+    @property
+    def id(self) -> str:
+        return self._id
     
-    pass
+    @property
+    def rustFilter(self) -> RustFilter:
+        return self._rustFilter
+    
+    @property
+    def nickname(self) -> str:
+        return self._nickname
+    
+    @property
+    def name(self) -> str:
+        return self._name
+    
+    @property
+    def surname(self) -> str:
+        return self._surname
+    
+    @id.setter
+    def id(self, value: str) -> None:
+        self._id = str(value)
+    
+    @rustFilter.setter
+    def rustFilter(self, value: RustFilter) -> None:
+        if type(value) is not RustFilter:
+            raise TypeError('The rustFilter field must be an object of the RustFilter class!')
+        else:
+            self._rustFilter = value
+
+    @nickname.setter
+    def nickname(self, value: str) -> None:
+        self._nickname = str(value)
+
+    @name.setter
+    def name(self, value: str) -> None:
+        self._name = str(value)
+
+    @surname.setter
+    def surname(self, value: str) -> None:
+        self._surname = str(value)

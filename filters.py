@@ -1,6 +1,4 @@
 
-# TODO: прописать заготовленные фильтры для диспетчера
-
 class ServerFilter:
 
     def __init__(self) -> None:
@@ -13,7 +11,8 @@ class ServerFilter:
         return {
             'players': self._players_min_check,
             'status': self._status_check,
-            'ip_port': self._ip_port_check
+            'ip_port': self._ip_port_check, 
+            'private': self._private_check
         }
     
     @property

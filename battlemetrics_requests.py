@@ -17,14 +17,12 @@ class EPartitions:
     servers: str = '/servers/'
     players: str = '/players/'
 
-# TODO: переписать под использование перечислений из класса EPartitions
+
 # TODO: дописать методы для обработки информации об игроках
 class BattleMetricsResponse:
 
     def __init__(self) -> None:
         self._url: str = "https://api.battlemetrics.com"
-        self._servers_url: str = "https://api.battlemetrics.com/servers/"
-        self._players_url: str = "https://api.battlemetrics.com/players/"
         self._headers: dict = {}
         self._api_key: str = ''
         self._servers: dict = {}
@@ -59,11 +57,11 @@ class BattleMetricsResponse:
 
         return servers_dict
     
-    async def _get_server_info(self, session, server: str) -> (Server, ER):
+    async def _get_server_info(self, session: ClientSession, server: str) -> (Server, ER):
         some_obj = None
 
         async with session.get(
-            url=self._servers_url + self._servers.get(server), 
+            url=f'{self._url}{EPartitions.servers}{self._servers.get(server)}', 
             headers=self._headers
         ) as response:
             

@@ -21,7 +21,6 @@ async def get_tasks(delay: int = 5) -> list:
 
 async def async_main() -> str:
     # print("Servers: OK!")
-    # asyncio.gather(*await get_tasks())
     await asyncio.gather(*await get_tasks())
     
 

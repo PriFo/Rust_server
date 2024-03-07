@@ -3,6 +3,7 @@ class ServerFilter:
 
     def __init__(self) -> None:
         self._players_min_check: int = -1
+        self._max_player_min_check: int = -1
         self._status_check: bool = True
         self._ip_port_check: bool = True
         self._private_check: bool = True

@@ -3,11 +3,13 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from aiogram.filters import CommandStart
 from aiogram.enums import ParseMode
+from dispatcher import Dispatcher as BMDp
 from os import getenv
 
 
 TOKEN: str = getenv('T_API_KEY')
 dp: Dispatcher = Dispatcher()
+bmdp: BMDp = BMDp()
 
 
 @dp.message(CommandStart())

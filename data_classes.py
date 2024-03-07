@@ -123,7 +123,7 @@ class Response:
         self._id: str = data.get("data").get("id")
         self._data: dict = data.get('data')
 
-    def get_object(self) -> (Player, Server):
+    def get_object(self):
         """Метод, возвращающий объект по заданному типу"""
         if self._type == "player":
             return Player(self._id, self._data)
@@ -132,7 +132,7 @@ class Response:
 
 
 class Profile:
-
+    
     def __init__(self, *args, **kwargs) -> None:
         
         self._rustFilter: RustFilter = None

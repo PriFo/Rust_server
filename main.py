@@ -5,22 +5,22 @@ from os import getcwd
 from os.path import exists as file_exists
 
 
+#TODO написать комментарии для пояснения работы каждой функции, где это требуется
 def load_env():
-    if file_exists(getcwd() + '\.env'):
-        load_dotenv(getcwd() + '\.env')
+    path: str = getcwd() + '\.env'
+    if file_exists(path):
+        load_dotenv(path)
 
 
 async def get_tasks(delay: int = 5) -> list:
     # TODO: добавление задачи на запуск бота и соответствующие параметры
     tasks: list = []
     controller: BattleMetricsController = BattleMetricsController()
-    # print("Initialize: OK!")
     tasks.append(asyncio.create_task(controller.update_info(delay)))
     return tasks
 
 
 async def async_main() -> str:
-    # print("Servers: OK!")
     await asyncio.gather(*await get_tasks())
     
 

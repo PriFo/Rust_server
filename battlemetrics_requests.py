@@ -46,18 +46,17 @@ class BattleMetricsResponse:
         servers_tasks: list = []
         async with ClientSession() as session:
             
+            # Создание списка отложенных задач на сбор информации по сервера через API
             for key in self._servers.keys():
                 servers_tasks.append(create_task(self._get_server_info(session, key)))
 
-            # print("Keys: OK!")
             servers_list = await gather(*servers_tasks)
-            # print(f"Servers: {servers_list}")
 
         servers_dict: dict = {class_obj.name: class_obj for class_obj in servers_list}
 
         return servers_dict
     
-    async def _get_server_info(self, session: ClientSession, server: str) -> (Server, ER):
+    async def _get_server_info(self, session: ClientSession, server: str):
         some_obj = None
 
         async with session.get(
@@ -67,11 +66,9 @@ class BattleMetricsResponse:
             
             # Заполнение данных в список
             if response.status == 200:
-                # print(f"{server}: OK!")
                 server_data: dict = dict(await response.json())
                 object_getter: resp = resp(server_data)
                 some_obj = object_getter.get_object()
-                # print(f"get_obj: ok!")
                 if some_obj.game_id == 'rust':
                     return some_obj
             else:
@@ -110,6 +107,8 @@ class BattleMetricsController:
         tasks: list = []
         
         for key in self._servers_info:
+            
+            # Создание списка отложенных задач на поиск различий в словарях объектов
             if last_info[key] != self._servers_info[key]:
                 tasks.append(
                     create_task(
@@ -122,12 +121,17 @@ class BattleMetricsController:
         return differences
 
     async def __find_differences_in_servers(self, last_server_info: Server, server_info: Server) -> dict:
+        
+        # Поиск различий в словарях объектов
         difference_list: set = set(last_server_info.__dict__.items()) ^ set(server_info.__dict__.items())
         difference: dict = {'name': last_server_info.name}
+        
+        # Проход по всем различиям для определения новизны данных
         for item in difference_list:
             if item[1] == last_server_info.__dict__[item[0]]:
                 difference['old'] = {item[0]: item[1]}
             else:
                 difference['new'] = {item[0]: item[1]}
+        # цветной вывод в консоль
         # print(f'\033[4m\033[34m{server_info.name=}:\033[0m\033[32m {difference}\033[37m')
         return difference

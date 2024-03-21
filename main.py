@@ -3,6 +3,7 @@ import asyncio
 from dotenv import load_dotenv
 from os import getcwd
 from os.path import exists as file_exists
+from bot import start_bot
 
 
 #TODO написать комментарии для пояснения работы каждой функции, где это требуется
@@ -17,6 +18,7 @@ async def get_tasks(delay: int = 5) -> list:
     tasks: list = []
     controller: BattleMetricsController = BattleMetricsController()
     tasks.append(asyncio.create_task(controller.update_info(delay)))
+    tasks.append(asyncio.create_task(start_bot()))
     return tasks
 
 

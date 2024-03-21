@@ -1,6 +1,7 @@
 from filters import RustFilter
 
 
+#TODO дописать класс Player
 class Player:
     """
     Класс, содержащий полную информацию о игроке: \n
@@ -108,27 +109,31 @@ class RustServer(Server):
         
 
 class ServerFactory:
-    def get_server(self, id: str, data: dict) -> Server:
-        game_id: str = self._get_game_id(data)
+    
+    @staticmethod
+    def get_server(id: str, data: dict) -> Server:
+        game_id: str = ServerFactory.__get_game_id(data)
         if game_id == "rust":
-            return RustServer(id, data.get('attributes'), game_id)
+            return RustServer(id, data.get('data').get('attributes'), game_id)
 
-    def _get_game_id(self, data: dict) -> str:
-        return data.get("relationships").get("game").get("data").get("id")
+    @staticmethod
+    def __get_game_id(data: dict) -> str:
+        return data.get('data').get("relationships").get("game").get("data").get("id")
 
 
-class Response:
-    def __init__(self, data: dict) -> None:
-        self._type: str = data.get("data").get("type")
-        self._id: str = data.get("data").get("id")
-        self._data: dict = data.get('data')
+class ClassFactory:
 
-    def get_object(self):
+    @staticmethod
+    def get_object(data: dict):
         """Метод, возвращающий объект по заданному типу"""
-        if self._type == "player":
-            return Player(self._id, self._data)
-        elif self._type == "server":
-            return ServerFactory().get_server(self._id, self._data)
+        
+        __type = data.get("data").get("type")
+        __id = data.get("data").get("id")
+
+        if __type == "player":
+            return Player(__id, data)
+        elif __type == "server":
+            return ServerFactory.get_server(__id, data)
 
 
 class Profile:

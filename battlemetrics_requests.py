@@ -1,13 +1,15 @@
 
 from errorresponse import ErrorResponse as ER
-from data_classes import Response as resp
+from data_classes import ClassFactory as cfact
 from data_classes import Server
 from dispatcher import Dispatcher
+
 from json import loads as make_dict_from_str
+from json import dumps as make_json_from_obj
 
 from aiohttp import ClientSession
 import aiofiles
-from os import getenv
+from os import getenv, path
 from asyncio import sleep as aSleep
 from asyncio import create_task, gather
 
@@ -28,10 +30,22 @@ class BattleMetricsResponse:
         self._servers: dict = {}
         self._players: dict = {}
     
-    async def _async_read_file_as_dict(self, file_path) -> dict:
+    async def _async_read_file_as_dict(self, file_path: str) -> dict:
         async with aiofiles.open(file=file_path, mode='r', encoding='utf-8') as file:
             content = await file.read()
             return make_dict_from_str(content)
+        
+    async def _async_save_file_as_json(self, content, file_path: str) -> bool:
+        try:
+            if not path.exists(file_path):
+                content = make_json_from_obj(content)
+                async with aiofiles.open(file=file_path, mode='w', encoding='utf-8') as file:
+                    await file.write(content)
+                return True
+            else:
+                raise Exception('File exists')
+        except Exception as _:
+            return False
 
     async def async_initialize(self) -> None:
         
@@ -67,8 +81,9 @@ class BattleMetricsResponse:
             # Заполнение данных в список
             if response.status == 200:
                 server_data: dict = dict(await response.json())
-                object_getter: resp = resp(server_data)
-                some_obj = object_getter.get_object()
+                if await self._async_save_file_as_json(server_data, 'jsons/server_data_new.json'):
+                    print('\n\n=======server_data_new created=======\n\n')
+                some_obj = cfact.get_object(server_data)
                 if some_obj.game_id == 'rust':
                     return some_obj
             else:

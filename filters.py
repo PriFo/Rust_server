@@ -1,4 +1,16 @@
 
+class EFilterTypes:
+    server = 'server_filter'
+    player = 'player_filter'
+    none = ''
+
+
+class Filter:
+    
+    def __init__(self) -> None:
+        self._filter_type: str = EFilterTypes.none
+
+
 class ServerFilter:
 
     def __init__(self) -> None:

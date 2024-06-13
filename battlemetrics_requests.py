@@ -56,8 +56,17 @@ class BattleMetricsResponse:
         self._headers['Authorization'] = f'Bearer {self._api_key}'
     
     async def async_get_all_servers(self) -> dict:
+        
+        """
+        Функция получения необходимой информации по серверам в файле (в дальнейшем будет реализовано получение списка серверов из бд)
+
+        :return: dict - словарь со всей информацией по каждому серверу с типом хранения \n \
+            {название_севрера: объект_с_информацией_о_сервере}
+        """
+
         servers_list: list = []
         servers_tasks: list = []
+
         async with ClientSession() as session:
             
             # Создание списка отложенных задач на сбор информации по сервера через API

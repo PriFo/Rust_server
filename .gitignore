@@ -1,6 +1,14 @@
+# файл среды
 *.env
-/__pycache__
-/user_help_photos
+# файл настройки обновлений гита
 *.gitignore
+# файлы sql
+*.sql
+*.bak
+*.mwb
+# папка кеша python
+/__pycache__
+# папка с фото для работы бота
+/user_help_photos
+# папка для заметок
 /txts
-/sqlite

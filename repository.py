@@ -2,10 +2,13 @@ from pymysql import Connection, connect
 from pymysql.cursors import Cursor
 from data_classes import Profile
 from os import getenv
+from SQLSyntaxHelper import (
+    MySQLSyntaxHelper as sqlHelper,
+    ETablesBM_DB as tablesBM,
+)
 
 
 class Repository:
-    #TODO добавление логов для базы данных
     #TODO реализация взаимодействия с базой данных
 
     # ---Реализация синглтон---
@@ -17,7 +20,11 @@ class Repository:
             cls._instance.__db_con = None
             cls._instance.__db_cur = None
             cls._instance._profiles = {}
+            #TODO реализация буфера
+            #TODO реализация обновления запроса в очереди
+            #TODO реализация отказоустойчивости
             cls._instance._queue_requests = []
+            
         return cls._instance
     # ---Конец реализации---
     
@@ -56,6 +63,9 @@ class Repository:
 
     async def _insert_profile(self, profile_id):
         pass
+    
+    async def add_profile_filter(self, profile_id):
+        ...
 
     async def _insert_rust_filter(self, profile_id):
         pass

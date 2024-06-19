@@ -34,18 +34,21 @@ class BattleMetricsResponse:
         async with aiofiles.open(file=file_path, mode='r', encoding='utf-8') as file:
             content = await file.read()
             return make_dict_from_str(content)
-        
-    async def _async_save_file_as_json(self, content, file_path: str) -> bool:
-        try:
-            if not path.exists(file_path):
-                content = make_json_from_obj(content)
-                async with aiofiles.open(file=file_path, mode='w', encoding='utf-8') as file:
-                    await file.write(content)
-                return True
-            else:
-                raise Exception('File exists')
-        except Exception as _:
-            return False
+
+    # функция для сохранения информации в конкретный путь в файл json
+    # закомментирована из-за отсутствия необходимости использовать ее после получения новой информации от API
+    # с сайта battlemetrics.com
+    # async def _async_save_file_as_json(self, content, file_path: str) -> bool:
+    #     try:
+    #         if not path.exists(file_path):
+    #             content = make_json_from_obj(content)
+    #             async with aiofiles.open(file=file_path, mode='w', encoding='utf-8') as file:
+    #                 await file.write(content)
+    #             return True
+    #         else:
+    #             raise Exception('File exists')
+    #     except Exception as _:
+    #         return False
 
     async def async_initialize(self) -> None:
         
@@ -90,8 +93,8 @@ class BattleMetricsResponse:
             # Заполнение данных в список
             if response.status == 200:
                 server_data: dict = dict(await response.json())
-                if await self._async_save_file_as_json(server_data, 'jsons/server_data_new.json'):
-                    print('\n\n=======server_data_new created=======\n\n')
+                # if await self._async_save_file_as_json(server_data, 'jsons/server_data_new.json'):
+                #     print('\n\n=======server_data_new created=======\n\n')
                 some_obj = cfact.get_object(server_data)
                 if some_obj.game_id == 'rust':
                     return some_obj

@@ -26,7 +26,6 @@ async def async_main() -> str:
     await asyncio.gather(*await get_tasks())
     
 
-
 if __name__ == '__main__':
     load_env()
     asyncio.run(async_main())

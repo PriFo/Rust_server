@@ -4,7 +4,7 @@ import aiofiles
 
 
 notebook_path = 'C:\\Users\\screb\\Desktop\\Dev\\rust_server\\Rust_server'
-pc_path = 'C:\\Users\\screb\\Desktop\\Rust_server'
+pc_path = 'C:\\Users\\screb\\Desktop\\Dev\\Rust_server'
 c_path = 'C:\\'
 inclusive_dirs: list = ['.git', '__pycache__']
 
@@ -60,24 +60,23 @@ async def try_to_check_all_files_on_pc():
 
 
 async def main():
-    is_pc = False
+    is_pc = True
     try:
         dir_list = os.listdir(notebook_path)
     except:
         is_pc = True
         dir_list = os.listdir(pc_path)
     finally:
-        while True:
-            print('\033[33m')
-            tasks = []
-            if is_pc:
-                tasks = await create_tasks_files(dir_list, pc_path)
-            else:
-                tasks = await create_tasks_files(dir_list, notebook_path)
-            counts = await asyncio.gather(*tasks)
-            result = await sum_counts(counts)
-            print('\033[37m')
-            print(f'Strings in project: {result}')
+        print('\033[33m')
+        tasks = []
+        if is_pc:
+            tasks = await create_tasks_files(dir_list, pc_path)
+        else:
+            tasks = await create_tasks_files(dir_list, notebook_path)
+        counts = await asyncio.gather(*tasks)
+        result = await sum_counts(counts)
+        print('\033[37m')
+        print(f'Strings in project: {result}')
 
 
 if __name__ == '__main__':

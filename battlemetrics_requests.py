@@ -58,7 +58,7 @@ class BattleMetricsResponse:
 
         self._headers['Authorization'] = f'Bearer {self._api_key}'
     
-    async def async_get_all_servers(self) -> dict:
+    async def async_get_all(self) -> dict:
         
         """
         Функция получения необходимой информации по серверам в файле (в дальнейшем будет реализовано получение списка серверов из бд)
@@ -74,7 +74,7 @@ class BattleMetricsResponse:
             
             # Создание списка отложенных задач на сбор информации по сервера через API
             for key in self._servers.keys():
-                servers_tasks.append(create_task(self._get_server_info(session, key)))
+                servers_tasks.append(create_task(self._get_info(session, key)))
 
             servers_list = await gather(*servers_tasks)
 
@@ -82,7 +82,7 @@ class BattleMetricsResponse:
 
         return servers_dict
     
-    async def _get_server_info(self, session: ClientSession, server: str):
+    async def _get_info(self, session: ClientSession, server: str):
         some_obj = None
 
         async with session.get(
@@ -96,8 +96,11 @@ class BattleMetricsResponse:
                 # if await self._async_save_file_as_json(server_data, 'jsons/server_data_new.json'):
                 #     print('\n\n=======server_data_new created=======\n\n')
                 some_obj = cfact.get_object(server_data)
-                if some_obj.game_id == 'rust':
-                    return some_obj
+                if some_obj.TYPE == 'server':
+                    if some_obj.game_id == 'rust':
+                        return some_obj
+                elif some_obj.TYPE == 'player':
+                    ...
             else:
                 some_obj = ER()
                 some_obj.initialize(
@@ -114,33 +117,33 @@ class BattleMetricsController:
         self._servers_json_path: str = 'jsons/servers.json'
         self._url: str = ''
         self._bm_response: BattleMetricsResponse = BattleMetricsResponse()
-        self._servers_info: dict = {}
+        self._info: dict = {}
 
     async def update_info(self, delay: int = 5) -> None:
         # TODO: Обрабатывать ErrorResponse
         await self._bm_response.async_initialize()
-        self._servers_info = await self._bm_response.async_get_all_servers()
+        self._info = await self._bm_response.async_get_all()
 
-        last_info: dict = self._servers_info
+        last_info: dict = self._info
         while True:
             await aSleep(delay)
-            self._servers_info = await self._bm_response.async_get_all_servers()
-            differences: list = await self._find_differences_servers(last_info=last_info)
-            last_info = self._servers_info
+            self._info = await self._bm_response.async_get_all()
+            differences: list = await self._find_differences(last_info=last_info)
+            last_info = self._info
             await self._dp.handle_differences(differences=differences)
 
 
-    async def _find_differences_servers(self, last_info: dict) -> list:
+    async def _find_differences(self, last_info: dict) -> list:
         tasks: list = []
         
-        for key in self._servers_info:
+        for key in self._info:
             
             # Создание списка отложенных задач на поиск различий в словарях объектов
-            if last_info[key] != self._servers_info[key]:
+            if last_info[key] != self._info[key]:
                 tasks.append(
                     create_task(
                         self.__find_differences_in_servers(
-                            last_server_info=last_info[key], server_info=self._servers_info[key]
+                            last_server_info=last_info[key], server_info=self._info[key]
                         )
                     )
                 )
@@ -151,7 +154,12 @@ class BattleMetricsController:
         
         # Поиск различий в словарях объектов
         difference_list: set = set(last_server_info.__dict__.items()) ^ set(server_info.__dict__.items())
-        difference: dict = {'name': last_server_info.name}
+        difference: dict = {
+            'type': last_server_info.TYPE,
+            'game_id': last_server_info.game_id,
+            'name': last_server_info.name,
+            'description': str(last_server_info)
+        }
         
         # Проход по всем различиям для определения новизны данных
         for item in difference_list:

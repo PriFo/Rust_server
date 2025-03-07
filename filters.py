@@ -2,18 +2,27 @@
 class EFilterTypes:
     server = 'server_filter'
     player = 'player_filter'
-    none = ''
+    none = 'null'
 
 
 class Filter:
     
+    def __init__(self, filter_type = EFilterTypes.none) -> None:
+        self._filter_type: str = filter_type
+
+    @property
+    def filter_type(self):
+        return self._filter_type
+    
+    @filter_type.setter
+    def filter_type(self, value = EFilterTypes.none):
+        self._filter_type = value
+
+
+class ServerFilter(Filter):
+
     def __init__(self) -> None:
-        self._filter_type: str = EFilterTypes.none
-
-
-class ServerFilter:
-
-    def __init__(self) -> None:
+        super().__init__(EFilterTypes.server)
         self._players_min_check: int = -1
         self._max_player_min_check: int = -1
         self._status_check: bool = True
@@ -102,6 +111,16 @@ class RustFilter(ServerFilter):
     def map_thumbnailUrl_check(self) -> bool:
         return self._map_thumbnailUrl_check
     
+    def get_filters(self) -> dict:
+        return super().get_filters() + {
+            'queued_players_check': self._queued_players_check,
+            'last_wipe_check': self._last_wipe_check,
+            'pve_check': self._pve_check,
+            'url_check': self._url_check,
+            'map_url_check': self._map_url_check,
+            'map_thumbnailUrl_check': self._map_thumbnailUrl_check
+        }
+    
     @queued_players_check.setter
     def queued_players_check(self, value: int) -> None:
         self._queued_players_check = value
@@ -126,6 +145,9 @@ class RustFilter(ServerFilter):
     def map_thumbnailUrl_check(self, value: bool) -> None:
         self._map_thumbnailUrl_check = value
 
-
-class PlayerFilter:
-    pass
+#TODO: разобраться с тем, какие данные необходимо хранить
+class PlayerFilter(Filter):
+    
+    def __init__(self):
+        super().__init__(EFilterTypes.player)
+        

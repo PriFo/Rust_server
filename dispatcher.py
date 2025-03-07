@@ -1,9 +1,10 @@
 from filters import RustFilter
 from repository import Repository
 from asyncio import gather, create_task
+from enum import Enum
 
 
-class EHandlerNames:
+class EHandlerNames(Enum):
     """
     Класс перечисления для стандартизирования наименований существующих обработчиков
     """
@@ -15,9 +16,9 @@ class EHandlerNames:
     rust_queued_players_changed: str = "rust_queued_players_changed"
     rust_map_url_changed: str = 'rust_map_url_changed'
     rust_map_thumbnailUrl_changed: str = 'rust_map_thumbnailUrl_changed'
+    all_diffs: str = 'differences'
 
 
-# TODO: закончить написание класса Dispatcher
 class Dispatcher:
 
     # ---Реализация синглтон---
@@ -33,7 +34,7 @@ class Dispatcher:
         return cls._instance
     # ---Конец реализации---
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self) -> None:
         self._handlers: dict = self._instance._handlers
 
     async def handle_differences(self, differences: list) -> None:
@@ -43,10 +44,14 @@ class Dispatcher:
         
         for diff in differences:
             # Вывод различий для отладки
-            #TODO запуск обработчиков и прием аргументов
-            print(f'\033[4m\033[34m{diff["name"]=}:\033[0m\033[32m {diff["new"]=}\033[37m')
-            print(f'{self._handlers=}')
-            await self.test_handle(f'{diff["name"]=}: {diff["new"]=}')
+            #print(f'\033[4m\033[34m{diff["name"]=}:\033[0m\033[32m {diff["new"]=}\033[37m')
+            #print(f'{self._handlers=}')
+            handlers = [
+            create_task(
+                self._handlers.get(key)(self._bot, differences)
+            ) for key in self._handlers.keys() if self._handlers.get(key) is not None]
+
+            await gather(*handlers)
 
     async def add_bot(self, bot):
         """
@@ -54,13 +59,16 @@ class Dispatcher:
             его перезапись означает смену бота для отправки сообщений)
 
         :param bot: Объект класса aiogram.Bot, с помощью которого происходит отправка изменений
-        :return: None
+        :return None:
         """
 
         if bot is None:
             raise ValueError('Bot can not be NoneType')
         else:
-            self._bot = bot
+            if self._bot is None:
+                self._bot = bot
+            else:
+                raise ValueError('Reinitialization of bot is prohibited')
     
     async def test_handle(self, differences = ['OK']):
 
@@ -68,7 +76,7 @@ class Dispatcher:
         Функция для тестовой обработки декорируемых функций
 
         :param differences: словарь с изменениями, если изменения не посылаются, то является списком с элементом OK
-        :return: None
+        :return None:
         """
 
         #заполнение списка обработчиков объектами типа asyncio.Future для всех ключей, где значение заполнено
@@ -87,12 +95,14 @@ class Dispatcher:
         :param handler_name: Ключ для добавления в словарь обработчиков и поиска необходимого
         :param func: Функция-обработчик Future для отложенного выполнения
 
-        :return: None
+        :return None:
         """
 
         if handler_name == '' or func == None:
             if handler_name == '':
                 raise ValueError('Handler name must be filled in')
+            elif handler_name not in EHandlerNames:
+                raise ValueError('Handler name must be uniform')
             else:
                 raise ValueError('Function must not be NoneType')
         else:
@@ -110,7 +120,7 @@ class Dispatcher:
                 необходимому параметру сервера
 
         :param handler: Наименование обработчика, который необходимо инициализировать
-        :return: None
+        :return None:
         """
 
         def wrapper(func):
@@ -118,14 +128,16 @@ class Dispatcher:
             Внутренняя функция для работы декоратора
 
             :param func: Декорируемая функция
-            :return: None
+            :return None:
             """
             
             try:
                 self._add_handler(handler, func)
-            except ValueError as e:
+            except ValueError as ve:
                 #TODO добавления в репозиторий логов
-                print(f'ValueError({func.__name__=}, {handler=}):', e.args[0])
+                print(f'ValueError({func.__name__=}, {handler=}):', ve.args[0])
+            except Exception as e:
+                print(f'Exception({func.__name__=}), {handler=}):', e.args[0])
 
         return wrapper
             

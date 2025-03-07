@@ -10,24 +10,34 @@ class Player:
     - последнее появление в сети и т.д.
     """
 
+    TYPE = 'player'
+
     def __init__(self, id: str, data: dict) -> None:
         self._id: str = id
-        self._data: dict = data
-        self._name: str = self._data.get('name')
-        self._private: bool = self._data.get('private')
-        self._positiveMatch: bool = self._data.get('positiveMatch')
+        self._name: str = data.get('name')
+        self._private: bool = data.get('private')
+        self._positiveMatch: bool = data.get('positiveMatch')
         self._player_servers: list = []
 
     def __str__(self) -> str:
         return f'Игрок: {self._name}\n \
             Приватный профиль: {"Да" if self._private else "Нет"}\n \
             Прямое получение данных с серверов: {"Да" if self._positiveMatch else "Нет"}'
+    
+    def __dict__(self):
+        return {
+            'type': self.TYPE,
+            'id': self._id,
+
+        }
 
 
 class Server:
     """
     Класс-родитель для всех остальных классов с информацией о сервере
     """
+    
+    TYPE = 'server'
 
     def __init__(self, id: str, data: dict, game_id: str) -> None:
         self._id: str = id
@@ -99,13 +109,16 @@ class RustServer(Server):
             Адрес сервера: {self._server_url}\n \
             Интерактивная карта сервера: {self._server_map_url}\n \
             Изображение карты сервера: {self._server_map_thumbnailUrl}\n\n \
-            Команда для подключения по IP: {self._ip}:{self._port}'
+            Команда для подключения по IP: connect {self._ip}:{self._port}'
     
     def __eq__(self, __value: object) -> bool:
         return self.__dict__ == __value.__dict__
     
     def __ne__(self, __value: object) -> bool:
         return self.__dict__ != __value.__dict__
+    
+    def __dict__(self):
+        ...
         
 
 class ServerFactory:

@@ -60,7 +60,8 @@ async def try_to_check_all_files_on_pc():
 
 
 async def main():
-    is_pc = True
+    is_pc = False
+    #is_pc = True
     try:
         dir_list = os.listdir(notebook_path)
     except:

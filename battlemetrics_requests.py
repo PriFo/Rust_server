@@ -88,7 +88,6 @@ class BattleMetricsResponse:
                 print(obj)
 
         objects_dict: dict = {class_obj.name: class_obj for class_obj in obj_list}
-        print(f'======================async_get_all======================\n\n{objects_dict=}\n\n{self._servers=}\n\n{self._players}\n\n')
 
         return objects_dict
     
@@ -217,8 +216,6 @@ class BattleMetricsController:
         
         last_info_dict: dict = last_info.__dict__()
         new_info_dict: dict = new_info.__dict__()
-
-        print(f'======================find_differences======================\n\n{last_info_dict=}\n\n{new_info_dict=}\n\n')
         
         differences: dict = {
             'type': last_info.TYPE,
@@ -235,7 +232,5 @@ class BattleMetricsController:
             if last_info_dict[key] != value:
                 differences['old'].update({key: last_info_dict[key]})
                 differences['new'].update({key: value})
-
-        print(f'======================find_differences======================\n\n{differences=}\n\n{type(differences)=}\n\n{isinstance(differences, dict)=}\n\n')
 
         return differences

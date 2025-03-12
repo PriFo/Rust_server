@@ -48,7 +48,7 @@ class Dispatcher:
             #print(f'{self._handlers=}')
             handlers = [
             create_task(
-                self._handlers.get(key)(self._bot, differences)
+                self._handlers.get(key)(self._bot, diff)
             ) for key in self._handlers.keys() if self._handlers.get(key) is not None]
 
             await gather(*handlers)

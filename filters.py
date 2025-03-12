@@ -1,6 +1,8 @@
+from enum import Enum
 
-class EFilterTypes:
+class EFilterTypes(Enum):
     server = 'server_filter'
+    rust_server = 'rust_filter'
     player = 'player_filter'
     none = 'null'
 
@@ -9,20 +11,34 @@ class Filter:
     
     def __init__(self, filter_type = EFilterTypes.none) -> None:
         self._filter_type: str = filter_type
+        self._send_in_one_msg: bool = True
 
     @property
-    def filter_type(self):
+    def filter_type(self) -> str:
         return self._filter_type
     
+    @property
+    def send_in_one_msg(self) -> bool:
+        return self._send_in_one_msg
+    
+    @send_in_one_msg.setter
+    def send_in_one_msg(self, value: bool) -> None:
+        self._send_in_one_msg = value
+    
     @filter_type.setter
-    def filter_type(self, value = EFilterTypes.none):
+    def filter_type(self, value = EFilterTypes.none) -> None:
         self._filter_type = value
+
+    def get_filters(self) -> dict:
+        return {
+            'type': self._filter_type
+        }
 
 
 class ServerFilter(Filter):
 
-    def __init__(self) -> None:
-        super().__init__(EFilterTypes.server)
+    def __init__(self, filter_type = EFilterTypes.none) -> None:
+        super().__init__(filter_type)
         self._players_min_check: int = -1
         self._max_player_min_check: int = -1
         self._status_check: bool = True
@@ -30,7 +46,7 @@ class ServerFilter(Filter):
         self._private_check: bool = True
 
     def get_filters(self) -> dict:
-        return {
+        return super().get_filters() + {
             'players': self._players_min_check,
             'status': self._status_check,
             'ip_port': self._ip_port_check, 
@@ -78,8 +94,8 @@ class ServerFilter(Filter):
 
 class RustFilter(ServerFilter):
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, filter_type = EFilterTypes.none) -> None:
+        super().__init__(filter_type)
         self._queued_players_check: int = 0
         self._last_wipe_check: bool = True
         self._pve_check: bool = True
@@ -148,6 +164,19 @@ class RustFilter(ServerFilter):
 #TODO: разобраться с тем, какие данные необходимо хранить
 class PlayerFilter(Filter):
     
-    def __init__(self):
-        super().__init__(EFilterTypes.player)
+    def __init__(self, filter_type = EFilterTypes.none):
+        super().__init__(filter_type)
         
+
+class FilterFactory:
+
+    @staticmethod
+    def get_filter(filter_type = EFilterTypes.none) -> Filter:
+        if filter_type == EFilterTypes.none:
+            return Filter(filter_type)
+        elif filter_type == EFilterTypes.server:
+            return ServerFilter(filter_type)
+        elif filter_type == EFilterTypes.player:
+            return PlayerFilter(filter_type)
+        elif filter_type == EFilterTypes.rust_server:
+            return RustFilter(filter_type)

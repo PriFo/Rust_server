@@ -29,7 +29,17 @@ async def start_message(message: Message):
 #TODO написать ответ пользьвоталю на команду /help
 @dp.message(Command('help'))
 async def help_message(message: Message):
-    await message.answer(text=f'')
+    await message.answer(text=f'Данный бот умеет следующее: \n\n\
+                         \t1) Отправлять необходимые пользователю изменения о \
+                         серверах, которые можно выбрать из списка, либо добавить \
+                         вручную, если известен id сервера на сайте battlemetrics\
+                         .com.\n\
+                         \t2) Отправлять необходимы пользователю изменения об \
+                         игроках, в том числе играют ли они сейчас или нет \
+                         (данный функционал сейчас разрабатывается).\n\
+                         \t3) Фильтровать отправление изменений, вплоть до \
+                         времени отключения сервера и его включения.\n\
+                         Можете выбрать следующие ')
 
 
 @bmdp.handler(handler=EHN.all_diffs)
@@ -43,13 +53,13 @@ async def send_diffs(bot, differences: dict, profile_id = '517965582'):
     :return None:
     """
     if not isinstance(differences, dict):
-        raise TypeError(f'differences must have type dict not {type(differences)}')
+        raise TypeError(f'Differences must have type dict not {type(differences)}')
     
-    await bot.send_message(chat_id=profile_id, text=str(differences))
+    await bot.send_message(chat_id=profile_id, text=__diffs_to_str(differences))
 
 
 async def __diffs_to_str(differences: dict):
-    ...
+    return differences['description']
 
 
 #TODO написать обработчики ПриИзмененииДанныхОСервере

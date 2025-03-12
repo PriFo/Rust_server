@@ -1,15 +1,15 @@
 
 from errorresponse import ErrorResponse as ER
-from data_classes import ClassFactory as cfact
+from data_classes import ClassFactory as cfact, Player
 from data_classes import Server
 from dispatcher import Dispatcher
 
 from json import loads as make_dict_from_str
-from json import dumps as make_json_from_obj
+#from json import dumps as make_json_from_obj
 
 from aiohttp import ClientSession
 import aiofiles
-from os import getenv, path
+from os import getenv
 from asyncio import sleep as aSleep
 from asyncio import create_task, gather
 
@@ -28,7 +28,6 @@ class BattleMetricsResponse:
         self._headers: dict = {}
         self._api_key: str = ''
         self._servers: dict = {}
-        self._players: dict = {}
     
     async def _async_read_file_as_dict(self, file_path: str) -> dict:
         async with aiofiles.open(file=file_path, mode='r', encoding='utf-8') as file:
@@ -55,59 +54,85 @@ class BattleMetricsResponse:
         self._api_key = getenv('BM_API_KEY')
 
         self._servers = await self._async_read_file_as_dict('jsons/servers.json')
+        
+        self._players = await self._async_read_file_as_dict('jsons/players.json')
 
         self._headers['Authorization'] = f'Bearer {self._api_key}'
     
     async def async_get_all(self) -> dict:
         
         """
-        Функция получения необходимой информации по серверам в файле (в дальнейшем будет реализовано получение списка серверов из бд)
+        Функция получения необходимой информации по серверам и игрокам в файле (в дальнейшем будет реализовано получение списка серверов и игроков из бд)
 
-        :return: dict - словарь со всей информацией по каждому серверу с типом хранения \n \
+        :return objects_dict: словарь со всей информацией по каждому серверу с типом хранения \
             {название_севрера: объект_с_информацией_о_сервере}
         """
 
-        servers_list: list = []
-        servers_tasks: list = []
+        obj_list: list = []
+        obj_tasks: list = []
 
         async with ClientSession() as session:
             
             # Создание списка отложенных задач на сбор информации по сервера через API
             for key in self._servers.keys():
-                servers_tasks.append(create_task(self._get_info(session, key)))
+                obj_tasks.append(create_task(self._get_server_info(session, key)))
+            
+            for key in self._players.keys():
+                obj_tasks.append(create_task(self._get_player_info(session, key)))
 
-            servers_list = await gather(*servers_tasks)
+            obj_list = await gather(*obj_tasks)
 
-        servers_dict: dict = {class_obj.name: class_obj for class_obj in servers_list}
+        for index, obj in enumerate(obj_list):
+            if isinstance(obj, ER):
+                obj_list.pop(index)
+                print(obj)
 
-        return servers_dict
+        objects_dict: dict = {class_obj.name: class_obj for class_obj in obj_list}
+        print(f'======================async_get_all======================\n\n{objects_dict=}\n\n{self._servers=}\n\n{self._players}\n\n')
+
+        return objects_dict
     
-    async def _get_info(self, session: ClientSession, server: str):
+    async def _get_server_info(self, session: ClientSession, id_obj: str):
         some_obj = None
 
         async with session.get(
-            url=f'{self._url}{EPartitions.servers}{self._servers.get(server)}', 
+            url=f'{self._url}{EPartitions.servers}{self._servers.get(id_obj)}', 
             headers=self._headers
         ) as response:
             
             # Заполнение данных в список
             if response.status == 200:
-                server_data: dict = dict(await response.json())
-                # if await self._async_save_file_as_json(server_data, 'jsons/server_data_new.json'):
-                #     print('\n\n=======server_data_new created=======\n\n')
-                some_obj = cfact.get_object(server_data)
-                if some_obj.TYPE == 'server':
-                    if some_obj.game_id == 'rust':
-                        return some_obj
-                elif some_obj.TYPE == 'player':
-                    ...
+                some_obj = await self._get_object(dict(await response.json()))
             else:
-                some_obj = ER()
-                some_obj.initialize(
-                    data=dict(await response.json())
-                )
+                some_obj = await self._get_error(dict(await response.json()))
     
         return some_obj
+    
+    async def _get_player_info(self, session: ClientSession, id_obj: str):
+        some_obj = None
+
+        async with session.get(
+            url=f'{self._url}{EPartitions.players}{self._players.get(id_obj)}', 
+            headers=self._headers
+        ) as response:
+            
+            # Заполнение данных в список
+            if response.status == 200:
+                some_obj = await self._get_object(dict(await response.json()))
+            else:
+                some_obj = await self._get_error(dict(await response.json()))
+    
+        return some_obj
+
+    async def _get_error(self, data: dict) -> ER:
+        error = ER()
+        error.initialize(
+            data=data
+        )
+        return error
+
+    async def _get_object(self, data: dict) -> tuple[Server, Player]:
+        return cfact.get_object(data)
 
 
 class BattleMetricsController:
@@ -142,31 +167,75 @@ class BattleMetricsController:
             if last_info[key] != self._info[key]:
                 tasks.append(
                     create_task(
-                        self.__find_differences_in_servers(
-                            last_server_info=last_info[key], server_info=self._info[key]
+                        self.__find_differences(
+                            last_info=last_info[key], new_info=self._info[key]
                         )
                     )
                 )
         differences: list = await gather(*tasks)
         return differences
 
-    async def __find_differences_in_servers(self, last_server_info: Server, server_info: Server) -> dict:
+    """async def __find_differences(
+            self, 
+            last_info: tuple[Server, Player], 
+            new_info: tuple[Server, Player]
+        ) -> dict:
         
+        last_info_dict: dict = last_info.__dict__()
+        new_info_dict: dict = new_info.__dict__()
+
+        print(f'\n\n{last_info_dict=}\n\n{new_info_dict=}\n\n')
+
         # Поиск различий в словарях объектов
-        difference_list: set = set(last_server_info.__dict__.items()) ^ set(server_info.__dict__.items())
+        difference_list: set = set(last_info_dict.items()) ^ set(new_info_dict.items())
         difference: dict = {
-            'type': last_server_info.TYPE,
-            'game_id': last_server_info.game_id,
-            'name': last_server_info.name,
-            'description': str(last_server_info)
+            'type': last_info.TYPE,
+            'name': last_info.name,
+            'description': str(last_info),
+            'old': {},
+            'new': {}
         }
+
+        if type(last_info) is type(Server):
+            difference['game_id'] = last_info.game_id
         
         # Проход по всем различиям для определения новизны данных
         for item in difference_list:
-            if item[1] == last_server_info.__dict__[item[0]]:
-                difference['old'] = {item[0]: item[1]}
+            if item[1] == last_info.__dict__()[item[0]]:
+                difference['old'].update({item[0]: item[1]})
             else:
-                difference['new'] = {item[0]: item[1]}
+                difference['new'].update({item[0]: item[1]})
         # цветной вывод в консоль
         # print(f'\033[4m\033[34m{server_info.name=}:\033[0m\033[32m {difference}\033[37m')
-        return difference
+        return difference"""
+
+    async def __find_differences(
+            self,
+            last_info: tuple[Server, Player],
+            new_info: tuple[Server, Player]
+    ) -> dict:
+        
+        last_info_dict: dict = last_info.__dict__()
+        new_info_dict: dict = new_info.__dict__()
+
+        print(f'======================find_differences======================\n\n{last_info_dict=}\n\n{new_info_dict=}\n\n')
+        
+        differences: dict = {
+            'type': last_info.TYPE,
+            'name': last_info.name,
+            'description': str(last_info),
+            'old': {},
+            'new': {}
+        }
+
+        if isinstance(last_info, Server):
+            differences['game_id'] = last_info.game_id
+
+        for key, value in new_info_dict.items():
+            if last_info_dict[key] != value:
+                differences['old'].update({key: last_info_dict[key]})
+                differences['new'].update({key: value})
+
+        print(f'======================find_differences======================\n\n{differences=}\n\n{type(differences)=}\n\n{isinstance(differences, dict)=}\n\n')
+
+        return differences

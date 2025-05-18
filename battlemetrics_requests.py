@@ -139,7 +139,6 @@ class BattleMetricsController:
     def __init__(self) -> None:
         self._dp: Dispatcher = Dispatcher()
         self._servers_json_path: str = 'jsons/servers.json'
-        self._url: str = ''
         self._bm_response: BattleMetricsResponse = BattleMetricsResponse()
         self._info: dict = {}
 

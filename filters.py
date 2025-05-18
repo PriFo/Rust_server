@@ -10,6 +10,8 @@ class EFilterTypes(Enum):
 class Filter:
     
     def __init__(self, filter_type = EFilterTypes.none) -> None:
+        if filter_type not in EFilterTypes:
+            raise ValueError('Filter type must be in EFiltersTypes')
         self._filter_type: str = filter_type
         self._send_in_one_msg: bool = True
 
@@ -23,15 +25,20 @@ class Filter:
     
     @send_in_one_msg.setter
     def send_in_one_msg(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Value of parametr send_in_one_msg must be bool not {type(value)}')
         self._send_in_one_msg = value
     
     @filter_type.setter
     def filter_type(self, value = EFilterTypes.none) -> None:
+        if value not in EFilterTypes:
+            raise TypeError('Value of parametr filter_type must be in EFiltersType')
         self._filter_type = value
 
     def get_filters(self) -> dict:
         return {
-            'type': self._filter_type
+            'type': self._filter_type,
+            'send_in_one_msg': self._send_in_one_msg
         }
 
 
@@ -39,15 +46,16 @@ class ServerFilter(Filter):
 
     def __init__(self, filter_type = EFilterTypes.none) -> None:
         super().__init__(filter_type)
-        self._players_min_check: int = -1
-        self._max_player_min_check: int = -1
+        self._min_players_count_check: int = -1
+        self._max_player_count_check: int = -1
         self._status_check: bool = True
         self._ip_port_check: bool = True
         self._private_check: bool = True
 
     def get_filters(self) -> dict:
         return super().get_filters() + {
-            'players': self._players_min_check,
+            'min_players': self._min_players_count_check,
+            'max_players': self._max_player_count_check,
             'status': self._status_check,
             'ip_port': self._ip_port_check, 
             'private': self._private_check
@@ -55,7 +63,7 @@ class ServerFilter(Filter):
     
     @property
     def players_min_check(self) -> int:
-        return self._players_min_check
+        return self._min_players_count_check
     
     @property
     def status_check(self) -> bool:
@@ -71,25 +79,35 @@ class ServerFilter(Filter):
     
     @players_min_check.setter
     def players_min_check(self, value: int) -> None:
+        if not isinstance(value, int):
+            raise TypeError(f'Value type must be int not {type(value)}')
         if value < 0:
-            self._players_min_check = -1
+            self._min_players_count_check = -1
         else:
-            self._players_min_check = value
+            self._min_players_count_check = value
     
     @status_check.setter
     def status_check(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Value type must be bool not {type(value)}')
         self._status_check = value
 
     @ip_port_check.setter
     def ip_port_check(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Value type must be bool not {type(value)}')
         self._status_check = value
 
     @private_check.setter
     def private_check(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Value type must be bool not {type(value)}')
         self._private_check = value
 
     def change_players(self, value: int) -> None:
-        self._players_min_check = value
+        if not isinstance(value, bool):
+            raise TypeError(f'Value type must be bool not {type(value)}')
+        self._min_players_count_check = value
 
 
 class RustFilter(ServerFilter):
@@ -139,26 +157,38 @@ class RustFilter(ServerFilter):
     
     @queued_players_check.setter
     def queued_players_check(self, value: int) -> None:
+        if not isinstance(value, int):
+            raise TypeError(f'Value type must be int not {type(value)}')
         self._queued_players_check = value
     
     @last_wipe_check.setter
     def last_wipe_check(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Value type must be bool not {type(value)}')
         self._last_wipe_check = value
     
     @pve_check.setter
     def pve_check(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Value type must be bool not {type(value)}')
         self._pve_check = value
     
     @url_check.setter
     def url_check(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Value type must be bool not {type(value)}')
         self._url_check = value
     
     @map_url_check.setter
     def map_url_check(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Value type must be bool not {type(value)}')
         self._map_url_check = value
     
     @map_thumbnailUrl_check.setter
     def map_thumbnailUrl_check(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Value type must be bool not {type(value)}')
         self._map_thumbnailUrl_check = value
 
 #TODO: разобраться с тем, какие данные необходимо хранить

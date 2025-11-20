@@ -6,7 +6,8 @@ import aiofiles
 notebook_path = 'C:\\Users\\screb\\Desktop\\Dev\\rust_server\\Rust_server'
 pc_path = 'C:\\Users\\screb\\Desktop\\Dev\\Rust_server'
 c_path = 'C:\\'
-inclusive_dirs: list = ['.git', '__pycache__']
+inclusive_dirs: list = ['.git', '__pycache__', 'jsons', 'txts', 'user_help_photos']
+inclusive_files: list = ['.env', '.gitignore']
 
 
 async def sum_counts(counts: list) -> int:
@@ -21,11 +22,12 @@ async def create_tasks_files(dir_list: list, dir_path: str) -> list:
     if path_list[len(path_list) - 1] not in inclusive_dirs:
         tasks = []
         for file in dir_list:
-            tasks.append(
-                asyncio.create_task(
-                    count_strings_in_file(dir_path + '\\' + file)
+            if file not in inclusive_files:
+                tasks.append(
+                    asyncio.create_task(
+                        count_strings_in_file(dir_path + '\\' + file)
+                    )
                 )
-            )
         return tasks
 
 
@@ -46,6 +48,9 @@ async def count_strings_in_file(file_path: str) -> int:
         except:
             print(f'{file_path} is skipped')
             return 0
+    except UnicodeDecodeError:
+        print(f'{file_path} is skipped')
+        return 0
 
 
 async def try_to_check_all_files_on_pc():
@@ -60,7 +65,7 @@ async def try_to_check_all_files_on_pc():
 
 
 async def main():
-    is_pc = True
+    is_pc = False
     try:
         dir_list = os.listdir(notebook_path)
     except:

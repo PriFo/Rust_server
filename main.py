@@ -6,15 +6,13 @@ from os.path import exists as file_exists
 from bot import start_bot
 
 
-#TODO написать комментарии для пояснения работы каждой функции, где это требуется
 def load_env():
-    path: str = getcwd() + '\.env'
+    path: str = getcwd() + '\\.env'
     if file_exists(path):
         load_dotenv(path)
 
 
 async def get_tasks(delay: int = 5) -> list:
-    # TODO: добавление задачи на запуск бота и соответствующие параметры
     tasks: list = []
     controller: BattleMetricsController = BattleMetricsController()
     tasks.append(asyncio.create_task(controller.update_info(delay)))
@@ -22,7 +20,7 @@ async def get_tasks(delay: int = 5) -> list:
     return tasks
 
 
-async def async_main() -> str:
+async def async_main() -> None:
     await asyncio.gather(*await get_tasks())
     
 

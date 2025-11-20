@@ -24,7 +24,118 @@ class EJoin:
     CROSS = 'CROSS' # декартовое соединение
 
 
+bm_logs_sql_columns: list = [
+    'id_log',
+    'object',
+    'action',
+    'is_error',
+    'comment',
+    'stage',
+    'log_date',
+    'command',
+    'result',
+    'fk_id_profile',
+]
+bm_logs_columns: list = [
+    'id_log',
+    'fk_id_profile',
+    'message_to_bot',
+    'message_from_bot',
+    'error_status',
+    'error_log',
+]
+bm_filters_columns: list = [
+    'id',
+    'object_type',
+    'fk_server_filters_id',
+    'fk_id_player_filter',
+]
+bm_games_columns: list = [
+    'id_game',
+    'game_name',
+]
+bm_player_filters_columns: list = [
+    'id_player_filter',
+    'fk_id_players',
+    'player_name_changed',
+    'player_private_changed',
+    'proofile_link_changed',
+]
+bm_players_columns: list = [
+    'id_players',
+    'nickname',
+    'positive_match',
+    'private',
+]
+bm_players_servers_columns: list = [
+    'id_conn',
+    'fk_id_server',
+    'fk_id_players',
+    'is_online',
+    'time_played',
+]
+bm_profiles_columns: list = [
+    'id_profile',
+    'profile_nickname',
+    'profile_name',
+    'profile_surname',
+    'bot_banned',
+]
+bm_profiles_filters_columns: list = [
+    'id_conn',
+    'fk_id_profile',
+    'fk_filters_id',
+]
+bm_rust_filters_columns: list = [
+    'id_filter',
+    'fk_server_filters_id',
+    'queued_players_count',
+    'last_wipe_check',
+    'pve_check',
+    'url_check',
+    'map_url_check',
+    'map_image_check',
+]
+bm_rust_servers_columns: list = [
+    'id_server',
+    'is_pve',
+    'official',
+    'description',
+    'modded',
+    'gamemode',
+    'steam_id',
+    'next_wipe_date',
+    'next_wipe_type',
+]
+bm_server_filters_columns: list = [
+    'id_filter',
+    'fk_servers_id',
+    'player_count',
+    'max_player_count',
+    'status_check',
+    'ip_port_check',
+    'private_check',
+]
+bm_servers_columns: list = [
+    'id_server',
+    'fk_games_id',
+    'server_name',
+    'rank',
+    'private',
+    'country',
+    'rust_server_id',
+]
+bm_suggestions_columns: list = [
+    'id_suggestions',
+    'fk_id_profile',
+    'msg_txt',
+    'isAnswered',
+    'isAccepted',
+]
+
+
 class MySQLSyntaxHelper:
+    #TODO реализация вложенного запроса
 
     @staticmethod
     def select(

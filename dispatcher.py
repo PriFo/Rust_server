@@ -43,6 +43,7 @@ class Dispatcher:
         """
         
         for diff in differences:
+
             # Вывод различий для отладки
             #print(f'\033[4m\033[34m{diff["name"]=}:\033[0m\033[32m {diff["new"]=}\033[37m')
             #print(f'{self._handlers=}')
@@ -50,7 +51,6 @@ class Dispatcher:
             create_task(
                 self._handlers.get(key)(self._bot, diff)
             ) for key in self._handlers.keys() if self._handlers.get(key) is not None]
-
             await gather(*handlers)
 
     async def add_bot(self, bot):

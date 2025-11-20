@@ -14,6 +14,7 @@ from asyncio import sleep as aSleep
 from asyncio import create_task, gather
 
 
+# TODO: дописать методы фильтрации API-запроса
 class EPartitions:
     
     servers: str = '/servers/'
@@ -101,9 +102,11 @@ class BattleMetricsResponse:
             
             # Заполнение данных в список
             if response.status == 200:
-                some_obj = await self._get_object(dict(await response.json()))
+                data = await response.read()
+                some_obj = await self._get_object(dict(make_dict_from_str(data)))
             else:
-                some_obj = await self._get_error(dict(await response.json()))
+                data = await response.read()
+                some_obj = await self._get_error(dict(make_dict_from_str(data)))
     
         return some_obj
     
@@ -117,9 +120,11 @@ class BattleMetricsResponse:
             
             # Заполнение данных в список
             if response.status == 200:
-                some_obj = await self._get_object(dict(await response.json()))
+                data = await response.read()
+                some_obj = await self._get_object(dict(make_dict_from_str(data)))
             else:
-                some_obj = await self._get_error(dict(await response.json()))
+                data = await response.read()
+                some_obj = await self._get_error(dict(make_dict_from_str(data)))
     
         return some_obj
 
@@ -147,14 +152,16 @@ class BattleMetricsController:
         await self._bm_response.async_initialize()
         self._info = await self._bm_response.async_get_all()
 
+        print('Информация для обновления подготовлена...')
+
         last_info: dict = self._info
         while True:
             await aSleep(delay)
             self._info = await self._bm_response.async_get_all()
             differences: list = await self._find_differences(last_info=last_info)
+            print('Обновление успешно!')
             last_info = self._info
             await self._dp.handle_differences(differences=differences)
-
 
     async def _find_differences(self, last_info: dict) -> list:
         tasks: list = []
@@ -162,7 +169,7 @@ class BattleMetricsController:
         for key in self._info:
             
             # Создание списка отложенных задач на поиск различий в словарях объектов
-            if last_info[key] != self._info[key]:
+            if not last_info[key] == self._info[key]:
                 tasks.append(
                     create_task(
                         self.__find_differences(
@@ -232,4 +239,5 @@ class BattleMetricsController:
                 differences['old'].update({key: last_info_dict[key]})
                 differences['new'].update({key: value})
 
+        print(f'\n{last_info_dict=}\n\n{new_info_dict=}\n\n{differences=}\n')
         return differences

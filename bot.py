@@ -17,29 +17,33 @@ bmdp: BMDp = BMDp()
 
 @dp.message(CommandStart())
 async def start_message(message: Message):
-    await message.answer(text=f'Привет, {message.from_user.full_name}, я бот, который \
-                         который помогает с отслеживанием основной статистики \
-                         серверов и их статуса ||с сайта battlemetrics.com||. \
-                         \n\nОсновной моей задачей на данный момент является \
-                         оповещение пользователей о вайпе на добавленных \
-                         в профиль серверах Rust.\n\nЗа дополнительной \
-                         информацией отправь /help.')
+    text = f'Привет\\, {message.from_user.first_name}\\, я бот\\, который \
+        который помогает с отслеживанием основной статистики \
+        серверов и их статуса ||с сайта battlemetrics.com||\\. \
+        \n\nОсновной моей задачей на данный момент является \
+        оповещение пользователей о вайпе на добавленных \
+        в профиль серверах Rust\\.\n\nЗа дополнительной \
+        информацией отправь \\/help\\.'
+    await message.answer(text=text, parse_mode=ParseMode.MARKDOWN_V2)
     
 
 #TODO написать ответ пользьвоталю на команду /help
 @dp.message(Command('help'))
 async def help_message(message: Message):
-    await message.answer(text=f'Данный бот умеет следующее: \n\n\
-                         \t1) Отправлять необходимые пользователю изменения о \
-                         серверах, которые можно выбрать из списка, либо добавить \
-                         вручную, если известен id сервера на сайте battlemetrics\
-                         .com.\n\
-                         \t2) Отправлять необходимы пользователю изменения об \
-                         игроках, в том числе играют ли они сейчас или нет \
-                         (данный функционал сейчас разрабатывается).\n\
-                         \t3) Фильтровать отправление изменений, вплоть до \
-                         времени отключения сервера и его включения.\n\
-                         Можете выбрать следующие ')
+    text = f'Данный бот умеет следующее: \n\n\
+            \t1\\) Отправлять необходимые пользователю изменения о \
+            серверах, которые можно выбрать из списка, либо добавить \
+            вручную, если известен id сервера на сайте battlemetrics\
+            \\.com или его название \\(На данный момент доступны только сервера Rust\\)\\.\n\
+            \t2\\) Отправлять необходимы пользователю изменения об \
+            игроках\\, в том числе играют ли они сейчас или нет \
+            \\(данный функционал сейчас разрабатывается\\)\\.\n\
+            \t3\\) Фильтровать отправление изменений, вплоть до \
+            времени отключения сервера и его включения\\.\n\
+            Можете выбрать следующие\\: \n\n\
+            || Ты думал\\, что здесь что\\-то будет\\? Оооой\\, братиш\\, зря \
+            весь функционал в разработке\\, давай иди дальше ||'
+    await message.answer(text=text, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 @bmdp.handler(handler=EHN.all_diffs)
@@ -59,7 +63,34 @@ async def send_diffs(bot, differences: dict, profile_id = '517965582'):
 
 
 async def __diffs_to_str(differences: dict):
-    return differences['description']
+    text: str = differences['description']
+    text = text.replace('\\', '\\\\')
+    text = text.replace(',', '\\,')
+    text = text.replace('/', '\\/')
+    text = text.replace('.', '\\.')
+    text = text.replace('(', '\\(')
+    text = text.replace(')', '\\)')
+    text = text.replace('?', '\\?')
+    text = text.replace(':', '\\:')
+    text = text.replace(';', '\\;')
+    text = text.replace('"', '\\"')
+    text = text.replace("'", "\\'")
+    text = text.replace('[', '\\[')
+    text = text.replace(']', '\\]')
+    return text
+
+
+@dp.message()
+async def any_message(message: Message):
+    text: str = ''
+    if message.from_user.id == 517965582:
+        text = 'Сначала допиши меня, потом делай, что по кайфу, ок?'
+        await message.answer(text=text)
+    else:
+        text = 'Извиняюсь за доставленные неудобства, но я пока не дописан, \
+            в скором времени меня создатель наконец-то допишет и вы сможете \
+            пользоваться полным функционалом'
+        await message.answer(text=text)
 
 
 #TODO написать обработчики ПриИзмененииДанныхОСервере
@@ -67,6 +98,8 @@ async def __diffs_to_str(differences: dict):
 #TODO написать обработчики менюшек
 async def start_bot():
     global token
+    global dp
+    global bmdp
     token = str(getenv('T_API_KEY'))
     bot = Bot(token=token, parse_mode=ParseMode.MARKDOWN_V2)
     await bmdp.add_bot(bot)

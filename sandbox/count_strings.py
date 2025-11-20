@@ -6,7 +6,7 @@ import aiofiles
 notebook_path = 'C:\\Users\\screb\\Desktop\\Dev\\rust_server\\Rust_server'
 pc_path = 'C:\\Users\\screb\\Desktop\\Dev\\Rust_server'
 c_path = 'C:\\'
-inclusive_dirs: list = ['.git', '__pycache__']
+inclusive_dirs: list = ['.git', '__pycache__', 'jsons']
 
 
 async def sum_counts(counts: list) -> int:

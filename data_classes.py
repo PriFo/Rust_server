@@ -4,6 +4,8 @@ from filters import Filter
 class Server:
     """
     Класс-родитель для всех остальных классов с информацией о сервере
+
+    
     """
     
     TYPE = 'server'
@@ -25,6 +27,10 @@ class Server:
     @property
     def name(self) -> str:
         return self._name
+    
+    @property
+    def id(self) -> str:
+        return self._id
     
     @property
     def game_id(self) -> str:
@@ -162,7 +168,7 @@ class Player:
         self._private: bool = data.get('private')
         self._positiveMatch: bool = data.get('positiveMatch')
         self._online_server: Server = None
-        self._player_servers: list = []
+        self._player_servers: dict = {}
 
     @property
     def id(self) -> str:
@@ -187,6 +193,9 @@ class Player:
     @property
     def player_servers(self) -> list:
         return self._player_servers
+    
+    def get_server_keys(self) -> list:
+        return self._player_servers.keys()
     
     @id.setter
     def id(self, value: tuple[str, int]) -> None:
@@ -220,8 +229,8 @@ class Player:
 
     def add_server(self, value: Server) -> None:
         if not isinstance(value, Server):
-            raise TypeError(f'Player server must be Server not {type(value)}')
-        self._player_servers.append(value)
+            raise TypeError(f'Player server must be instance of Server not {type(value)}')
+        self._player_servers[value.id] = value
 
     def __eq__(self, __value: object) -> bool:
         return self.__dict__() == __value.__dict__()
@@ -267,6 +276,8 @@ class Profile:
         self._name: str = kwargs.get('name')
         self._surname: str = kwargs.get('surname')
         self._filters: dict = {}
+        self._servers: dict = {}
+        self._players: dict = {}
 
     @property
     def id(self) -> str:
@@ -276,6 +287,12 @@ class Profile:
         if isinstance(input_filter, Filter):
             raise ValueError('Input filter is not Filter')
         self._filters[input_filter.filter_type] = input_filter
+
+    def add_server(self, value: Server) -> None:
+        ...
+
+    def add_player(self, value: Player) -> None:
+        ...
 
     def get_filter(self, filter_key: str) -> Filter:
         return self._filters.get(filter_key)
@@ -295,13 +312,7 @@ class Profile:
     @id.setter
     def id(self, value: str) -> None:
         self._id = str(value)
-    
-    # @filters.setter
-    # def rustFilter(self, value: Filter) -> None:
-    #     if type(value) is not Filter:
-    #         raise TypeError('The rustFilter field must be an object of the RustFilter class!')
-    #     else:
-    #         self._rustFilter = value
+
 
     @nickname.setter
     def nickname(self, value: str) -> None:

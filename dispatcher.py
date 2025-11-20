@@ -2,8 +2,9 @@ import traceback
 from data_classes import Profile
 from filters import Filter
 from repository import Repository
-from asyncio import gather, create_task, Future
+from asyncio import gather, create_task
 from aiogram import Bot
+from typing import Callable
 
 
 class EHandlerNames:
@@ -32,6 +33,9 @@ class EHandlerNames:
     player_name: str = "_player_name"
     player_private: str = "_player_private"
     player_profile_link: str = "_player_profile_link"
+    
+    # All differences
+    all_diffs: str = 'differences'
 
 
 class Dispatcher:
@@ -45,7 +49,7 @@ class Dispatcher:
             cls._instance._handlers = {}
             cls._instance._bot = None
             # Раскомментировать при наличии реализации БД
-            cls._repo: Repository = Repository()
+            cls._instance._repo: Repository = Repository()
         return cls._instance
     # ---Конец реализации---
 
@@ -79,8 +83,10 @@ class Dispatcher:
     async def __handle_server_differences_for_profile(self, id_chat: str, profile: Profile, diffs: list) -> None:
         for diff in diffs:
             game_id = diff.get('game_id')
-            profile.get_filter(game_id)
-            ...
+            filter_obj = profile.get_filter(game_id)
+            if filter_obj:
+                # TODO: Реализовать фильтрацию и отправку сообщений
+                ...
 
     async def add_bot(self, bot: Bot = None):
         """
@@ -88,7 +94,7 @@ class Dispatcher:
             его перезапись означает смену бота для отправки сообщений)
 
         :param bot: Объект класса aiogram.Bot, с помощью которого происходит отправка изменений
-        :return: None
+        :return None:
         """
 
         if bot:
@@ -104,7 +110,7 @@ class Dispatcher:
         Функция для тестовой обработки декорируемых функций
 
         :param differences: словарь с изменениями, если изменения не посылаются, то является списком с элементом OK
-        :return: None
+        :return None:
         """
 
         #заполнение списка обработчиков объектами типа asyncio.Future для всех ключей, где значение заполнено
@@ -115,15 +121,15 @@ class Dispatcher:
 
         await gather(*handlers)
 
-    def _add_handler(self, handler_name: str = '', func: Future = None):
+    def _add_handler(self, handler_name: str = '', func: Callable = None):
 
         """
         Приватная функция для класса диспетчер и дочерних классов для добавления обработчиков по их наименованию
 
         :param handler_name: Ключ для добавления в словарь обработчиков и поиска необходимого
-        :param func: Функция-обработчик Future для отложенного выполнения
+        :param func: Функция-обработчик для отложенного выполнения
 
-        :return: None
+        :return None:
         """
 
         if handler_name == '' or func == None:
@@ -147,7 +153,7 @@ class Dispatcher:
                 необходимому параметру сервера
 
         :param handler: Наименование обработчика, который необходимо инициализировать
-        :return: None
+        :return None:
         """
 
         def wrapper(func):
@@ -155,12 +161,20 @@ class Dispatcher:
             Внутренняя функция для работы декоратора
 
             :param func: Декорируемая функция
-            :return: None
+            :return None:
             """
             
             try:
                 self._add_handler(handler, func)
             except ValueError as e:
+                self._repo.log_action(
+                    object='dispatcher', 
+                    action='handler', 
+                    is_error=True, 
+                    result=traceback.format_exc() + str(e), 
+                    stage='wrapper',
+                )
+            except Exception as e:
                 self._repo.log_action(
                     object='dispatcher', 
                     action='handler', 

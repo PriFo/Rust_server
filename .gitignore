@@ -12,3 +12,10 @@
 /user_help_photos
 # папка для заметок
 /txts
+get_all_servers.py
+get_all_servers_gpt.py
+clean_json.py
+/log
+/jsons/all_servers.json
+/jsons/all_servers_fixed.json
+/jsons/servers_id_map.json

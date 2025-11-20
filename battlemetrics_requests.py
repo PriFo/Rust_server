@@ -2,7 +2,7 @@
 import traceback
 from typing import Any, Union
 from errorresponse import ErrorResponse as ER
-from data_classes import ClassFactory as cfact
+from data_classes import ClassFactory as cfact, Player
 from data_classes import Server
 from dispatcher import Dispatcher
 
@@ -10,14 +10,12 @@ from json import loads as make_dict_from_str
 
 from aiohttp import ClientSession
 import aiofiles
-from os import (
-    getenv,
-    # path
-)
+from os import getenv
 from asyncio import sleep as aSleep
 from asyncio import create_task, gather
 
 
+# TODO: дописать методы фильтрации API-запроса
 class EPartitions:
     
     servers: str = '/servers/'
@@ -32,7 +30,6 @@ class BattleMetricsResponse:
         self._headers: dict = {}
         self._api_key: str = ''
         self._servers: dict = {}
-        self._players: dict = {}
     
     async def _async_read_file_as_dict(self, file_path: str) -> dict:
         async with aiofiles.open(file=file_path, mode='r', encoding='utf-8') as file:
@@ -80,15 +77,15 @@ class BattleMetricsResponse:
                 if servers_dict.get('errors'):
                     servers_dict['errors'].append(class_obj)
                 else:
-                    servers_dict['errors'] = []
+                    servers_dict['errors'] = [class_obj]
 
         return servers_dict
     
-    async def _get_server_info(self, session: ClientSession, server: str):
+    async def _get_server_info(self, session: ClientSession, server_id: str):
         some_obj = None
 
         async with session.get(
-            url=f'{self._url}{EPartitions.servers}{server}', 
+            url=f'{self._url}{EPartitions.servers}{server_id}', 
             headers=self._headers
         ) as response:
             
@@ -97,10 +94,9 @@ class BattleMetricsResponse:
                 server_data: dict = dict(await response.json())
                 return cfact.get_object(server_data)
             else:
+                data = await response.read()
                 some_obj = ER()
-                some_obj.initialize(
-                    data=dict(await response.json())
-                )
+                some_obj.initialize(data=dict(make_dict_from_str(data)))
     
         return some_obj
     
@@ -113,7 +109,6 @@ class BattleMetricsController:
     def __init__(self) -> None:
         self._dp: Dispatcher = Dispatcher()
         self._servers_json_path: str = 'jsons/servers.json'
-        self._url: str = ''
         self._bm_response: BattleMetricsResponse = BattleMetricsResponse()
         self._servers_info: dict = {}
 
@@ -128,7 +123,7 @@ class BattleMetricsController:
                 self._servers_info = await self._bm_response.async_get_servers_info(session)
                 errors: Union[list, None] = self._servers_info.get('errors')
                 if errors:
-                    self._dp.handle_errors(errors)
+                    await self._dp.handle_errors(errors)
                 last_info: dict = self._servers_info
                 
                 while True:
@@ -160,13 +155,15 @@ class BattleMetricsController:
                 result=traceback.format_exc() + str(e)
             )
 
+
     async def _find_differences_servers(self, last_info: dict) -> list:
         tasks: list = []
         
         for key in self._servers_info:
-            
+            if key == 'errors':
+                continue
             # Создание списка отложенных задач на поиск различий в словарях объектов
-            if last_info[key] != self._servers_info[key]:
+            if key in last_info and last_info[key] != self._servers_info[key]:
                 tasks.append(
                     create_task(
                         self.__find_differences_in_servers(
@@ -180,7 +177,7 @@ class BattleMetricsController:
     async def __find_differences_in_servers(self, last_server_info: Server, server_info: Server) -> dict:
         
         # Поиск различий в словарях объектов
-        difference_list: set = set[tuple[str, Any]](last_server_info.__dict__.items()) ^ set[tuple[str, Any]](server_info.__dict__.items())
+        difference_list: set = set(last_server_info.__dict__.items()) ^ set(server_info.__dict__.items())
         difference: dict = {
             'name': last_server_info.name,
             'game_id': last_server_info.game_id}
@@ -195,3 +192,4 @@ class BattleMetricsController:
                 else:
                     difference['new'].append({item[0]: item[1]})
             return difference
+        return difference

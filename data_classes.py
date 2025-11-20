@@ -7,7 +7,11 @@ from errorresponse import ErrorResponse
 class Server:
     """
     Класс-родитель для всех остальных классов с информацией о сервере
+
+    
     """
+    
+    TYPE = 'server'
 
     def __init__(self, id: str, data: dict, game_id: str) -> None:
         self._id: str = id
@@ -29,8 +33,37 @@ class Server:
         return self._name
     
     @property
+    def id(self) -> str:
+        return self._id
+    
+    @property
     def game_id(self) -> str:
         return self._game_id
+    
+    def __str__(self) -> str:
+        return f"Название: {self._name}\n\
+            Приватный севрер: {'Да' if self._private else 'Нет'}\n\
+            Страна: {self._country}\n\
+            Статус: {'онлайн' if self._status == 'online' else 'оффлайн'}\n\
+            Игроки: {self._players}/{self._max_players}\n\
+            Команда для подключения по IP: connect {self._ip}:{self._port}"
+    
+    def __dict__(self) -> dict:
+        return {
+            'type': self.TYPE,
+            'id': self._id,
+            'name': self._name,
+            'status': self._status,
+            'players': self._players,
+            'max_players': self._max_players,
+            'ip': self._ip,
+            'port': self._port,
+            'private': self._private,
+            'query_status': self._query_status,
+            'country': self._country,
+            'address': self._address,
+            'game_id': self._game_id
+        }
 
 
 class RustServer(Server):
@@ -95,10 +128,20 @@ class RustServer(Server):
             Команда для подключения по IP: {self._ip}:{self._port}'
     
     def __eq__(self, __value: object) -> bool:
-        return self.__dict__ == __value.__dict__
+        return self.__dict__() == __value.__dict__()
     
     def __ne__(self, __value: object) -> bool:
-        return self.__dict__ != __value.__dict__
+        return self.__dict__() != __value.__dict__()
+    
+    def __dict__(self) -> dict:
+        return super().__dict__().update({
+            'server_queued_players': self._server_queued_players,
+            'server_last_wipe': self._server_last_wipe,
+            'server_pve': self._server_pve,
+            'server_url': self._server_url,
+            'server_map_url': self._server_map_url,
+            'server_map_thubnailUrl': self._server_map_thumbnailUrl
+        })
         
 
 class Player:
@@ -205,7 +248,7 @@ class ClassFactory:
             __id = data.get("data").get("id")
 
             if __type == "player":
-                return Player(__id, data)
+                return Player(__id, data.get('data').get('attributes'))
             elif __type == "server":
                 return ServerFactory.get_server(__id, data)
         except ValueError as e:
@@ -217,8 +260,127 @@ class ClassFactory:
             return error_resp
 
 
-class Profile:
+class Player:
+    #TODO сделать возможность добавления сервера (сервер, информация об игроке)
+    """
+    Класс, содержащий полную информацию о игроке: \n
+    - ссылка на стим (еще не проверял) \n
+    - активный сервер \n
+    - последнее появление в сети и т.д.
+    """
+
+    TYPE = 'player'
+
+    def __init__(self, id: str, data: dict) -> None:
+        self._id: str = id
+        self._name: str = data.get('name')
+        self._private: bool = data.get('private')
+        self._positiveMatch: bool = data.get('positiveMatch')
+        self._online_server: Server = None
+        self._player_servers: dict = {}
+
+    @property
+    def id(self) -> str:
+        return self._id
     
+<<<<<<< HEAD
+    def __init__(self, **kwargs: dict[str, str]) -> None:
+=======
+    @property
+    def name(self) -> str:
+        return self._name
+    
+    @property
+    def private(self) -> bool:
+        return self._private
+    
+    @property
+    def positiveMatch(self) -> bool:
+        return self._positiveMatch
+    
+    @property
+    def online_server(self) -> Server:
+        return self._online_server
+    
+    @property
+    def player_servers(self) -> list:
+        return self._player_servers
+    
+    def get_server_keys(self) -> list:
+        return self._player_servers.keys()
+    
+    @id.setter
+    def id(self, value: tuple[str, int]) -> None:
+        if not isinstance(value, str) or not isinstance(value, int):
+            raise TypeError(f'Player id must be int or str not {type(value)}')
+        self._id = str(value)
+
+    @name.setter
+    def name(self, value: str) -> None:
+        if not isinstance(value, str):
+            raise TypeError(f'Player name must be str not {type(value)}')
+        self._name = value
+
+    @private.setter
+    def private(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Player private status must be bool not {type(value)}')
+        self._private = value
+
+    @positiveMatch.setter
+    def positiveMatch(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f'Player positive match status must be bool not {type(value)}')
+        self._positiveMatch = value
+
+    @online_server.setter
+    def online_server(self, value: Server) -> None:
+        if not isinstance(value, Server):
+            raise TypeError(f'Player online server must be Server not {type(value)}')
+        self._online_server = value
+
+    def add_server(self, value: Server) -> None:
+        if not isinstance(value, Server):
+            raise TypeError(f'Player server must be instance of Server not {type(value)}')
+        self._player_servers[value.id] = value
+
+    def __eq__(self, __value: object) -> bool:
+        return self.__dict__() == __value.__dict__()
+    
+    def __ne__(self, __value: object) -> bool:
+        return self.__dict__() != __value.__dict__()
+
+    def __str__(self) -> str:
+        return f'Игрок: {self._name}\n\
+            Приватный профиль: {"Да" if self._private else "Нет"}\n\
+            Положительное совпадение: {"Да" if self._positiveMatch else "Нет"}\n\
+            "Активный сервер:" {self._online_server if self._online_server else ""}'
+    
+    def __dict__(self):
+        return {
+            'type': self.TYPE,
+            'id': self._id,
+            'name': self._name,
+            'private': self._private,
+            'positiveMatch': self._positiveMatch,
+            'online_server': self._online_server,
+            'player_servers': {server.name: server for server in self._player_servers}
+        }
+
+
+class Profile:
+    """
+    Класс, хранящий информацию о профиле пользователя, работающего с ботом
+
+    :param id: Идентификатор пользователя в телеграме типа str
+    :param nickname: Никнейм пользователя в телеграме типа str
+    :param name: Имя пользователя в телеграме типа str
+    :param surname: Фамилия пользователя в телеграме типа str
+    :param filters: Фильтры пользователя для фильтрации отправляемых изменений типа dict
+    """
+
+    TYPE: str = 'profile'
+
     def __init__(self, **kwargs: dict[str, str]) -> None:
         
         self._id: str = kwargs.get('id')
@@ -226,6 +388,8 @@ class Profile:
         self._name: str = kwargs.get('name')
         self._surname: str = kwargs.get('surname')
         self._filters: dict = {}
+        self._servers: dict = {}
+        self._players: dict = {}
 
     @property
     def id(self) -> str:
@@ -235,6 +399,12 @@ class Profile:
         if not isinstance(input_filter, Filter):
             raise TypeError(f'Input filter must be Filter, not {type(input_filter)}')
         self._filters[input_filter.game_id if input_filter.game_id != '' else input_filter.filter_type] = input_filter
+
+    def add_server(self, value: Server) -> None:
+        ...
+
+    def add_player(self, value: Player) -> None:
+        ...
 
     def get_filter(self, filter_key: str) -> Filter:
         if not isinstance(filter_key, str):
@@ -256,6 +426,10 @@ class Profile:
     @id.setter
     def id(self, value: str) -> None:
         self._id = str(value)
+<<<<<<< HEAD
+=======
+
+>>>>>>> remotes/Rust_server/framework
 
     @nickname.setter
     def nickname(self, value: str) -> None:

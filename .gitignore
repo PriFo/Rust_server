@@ -19,3 +19,4 @@ clean_json.py
 /jsons/all_servers.json
 /jsons/all_servers_fixed.json
 /jsons/servers_id_map.json
+/venv

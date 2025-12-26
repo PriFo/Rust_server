@@ -2,18 +2,17 @@
 class ETablesBM_DB:
     PROFILES = 'profiles'
     GAMES = 'games'
-    FILTERS = 'filters'
     LOGS = 'logs'
-    LOGS_SQL = 'logs_sql'
     PLAYER_FILTERS = 'player_filters'
     PLAYERS = 'players'
     PLAYERS_SERVERS = 'players_servers'
-    PROFILES_FILTERS = 'profiles_filters'
-    RUST_FILTERS = 'rust_filters'
+    RUST_SERVERS_FILTERS = 'rust_servers_filters'
     RUST_SERVERS = 'rust_servers'
     SERVER_FILTERS = 'server_filters'
     SERVERS = 'servers'
     SUGGESTIONS = 'suggestions'
+    PROFILES_SERVERS_CONN = 'profiles_servers_conn'
+    PROFILES_PLAYERS_CONN = 'profiles_players_conn'
 
 
 class EJoin:
@@ -24,18 +23,6 @@ class EJoin:
     CROSS = 'CROSS' # декартовое соединение
 
 
-bm_logs_sql_columns: list = [
-    'id_log',
-    'object',
-    'action',
-    'is_error',
-    'comment',
-    'stage',
-    'log_date',
-    'command',
-    'result',
-    'fk_id_profile',
-]
 bm_logs_columns: list = [
     'id_log',
     'fk_id_profile',
@@ -43,12 +30,7 @@ bm_logs_columns: list = [
     'message_from_bot',
     'error_status',
     'error_log',
-]
-bm_filters_columns: list = [
-    'id',
-    'object_type',
-    'fk_server_filters_id',
-    'fk_id_player_filter',
+    'log_date',
 ]
 bm_games_columns: list = [
     'id_game',
@@ -66,6 +48,8 @@ bm_players_columns: list = [
     'nickname',
     'positive_match',
     'private',
+    'created_at',
+    'updated_at',
 ]
 bm_players_servers_columns: list = [
     'id_conn',
@@ -80,24 +64,33 @@ bm_profiles_columns: list = [
     'profile_name',
     'profile_surname',
     'bot_banned',
+    'is_active',
+    'fk_id_server_filter',
+    'fk_id_player_filter',
 ]
-bm_profiles_filters_columns: list = [
-    'id_conn',
-    'fk_id_profile',
-    'fk_filters_id',
-]
-bm_rust_filters_columns: list = [
+bm_rust_servers_filters_columns: list = [
     'id_filter',
     'fk_server_filters_id',
     'queued_players_count',
     'last_wipe_check',
+    'next_wipe_check',
     'pve_check',
     'url_check',
     'map_url_check',
     'map_image_check',
 ]
+bm_profiles_servers_conn_columns: list = [
+    'id_conn',
+    'fk_id_profile',
+    'fk_id_server',
+]
+bm_profiles_players_conn_columns: list = [
+    'id_conn',
+    'fk_id_profile',
+    'fk_id_players',
+]
 bm_rust_servers_columns: list = [
-    'id_server',
+    'fk_id_servers',
     'is_pve',
     'official',
     'description',
@@ -106,6 +99,7 @@ bm_rust_servers_columns: list = [
     'steam_id',
     'next_wipe_date',
     'next_wipe_type',
+    'last_wipe_date',
 ]
 bm_server_filters_columns: list = [
     'id_filter',
@@ -123,7 +117,6 @@ bm_servers_columns: list = [
     'rank',
     'private',
     'country',
-    'rust_server_id',
 ]
 bm_suggestions_columns: list = [
     'id_suggestions',
@@ -131,11 +124,19 @@ bm_suggestions_columns: list = [
     'msg_txt',
     'isAnswered',
     'isAccepted',
+    'created_at',
+    'answered_at',
 ]
 
 
 class MySQLSyntaxHelper:
-    #TODO реализация вложенного запроса
+
+    @staticmethod
+    def _escape_sql_string(value: str) -> str:
+        """Экранирует специальные символы для SQL"""
+        if value is None:
+            return 'NULL'
+        return value.replace("'", "''").replace("\\", "\\\\")
 
     @staticmethod
     def select(
@@ -317,10 +318,10 @@ class MySQLSyntaxHelper:
         if all(isinstance(val, list) for val in values):
             values_list = []
             for sublist in values:
-                part_str = ", ".join(f"'{val}'" for val in sublist)
+                part_str = ", ".join(f"'{MySQLSyntaxHelper._escape_sql_string(str(val))}'" for val in sublist)
                 values_list.append(f'({part_str})')
         else:
-            values_str = ", ".join(f"'{val}'" for val in values)
+            values_str = ", ".join(f"'{MySQLSyntaxHelper._escape_sql_string(str(val))}'" for val in values)
         query = f"INSERT INTO {table} ({columns_str}) VALUES {f'({values_str})' if values_str else ', '.join(str(val) for val in values_list)}"
         return query
     
@@ -346,3 +347,66 @@ class MySQLSyntaxHelper:
         if where:
             query += f" WHERE {where}"
         return query
+    
+    @staticmethod
+    def subquery(
+        select_query: str,
+        alias: str = None
+    ) -> str:
+        """Генератор подзапроса (subquery) для использования в WHERE, FROM, JOIN и т.д.
+
+        Args:
+            select_query (str): SELECT-запрос, который будет использован как подзапрос
+            alias (str, optional): Алиас для подзапроса (обязателен для FROM). Defaults to None.
+
+        Raises:
+            TypeError: Неверные типы входных параметров
+
+        Returns:
+            str: Подзапрос в скобках с опциональным алиасом
+        """
+        if not isinstance(select_query, str):
+            raise TypeError("Select query must be a string")
+        if alias and not isinstance(alias, str):
+            raise TypeError("Alias must be a string")
+        
+        subquery_str = f"({select_query})"
+        if alias:
+            subquery_str += f" AS {alias}"
+        return subquery_str
+    
+    @staticmethod
+    def where_with_subquery(
+        column: str,
+        subquery: str,
+        operator: str = 'IN'
+    ) -> str:
+        """Генератор WHERE-условия с подзапросом
+
+        Args:
+            column (str): Колонка для сравнения
+            subquery (str): Подзапрос (может быть сгенерирован через subquery)
+            operator (str, optional): Оператор (IN, NOT IN, EXISTS, NOT EXISTS, =, !=, >, <, >=, <=). Defaults to 'IN'.
+
+        Raises:
+            TypeError: Неверные типы входных параметров
+
+        Returns:
+            str: WHERE-условие с подзапросом
+        """
+        if not isinstance(column, str):
+            raise TypeError("Column must be a string")
+        if not isinstance(subquery, str):
+            raise TypeError("Subquery must be a string")
+        if not isinstance(operator, str):
+            raise TypeError("Operator must be a string")
+        
+        valid_operators = ['IN', 'NOT IN', 'EXISTS', 'NOT EXISTS', '=', '!=', '>', '<', '>=', '<=']
+        if operator.upper() not in valid_operators:
+            raise ValueError(f"Operator must be one of: {', '.join(valid_operators)}")
+        
+        # Для EXISTS и NOT EXISTS подзапрос идет сразу после оператора
+        if operator.upper() in ['EXISTS', 'NOT EXISTS']:
+            return f"WHERE {operator.upper()} {subquery}"
+        else:
+            return f"WHERE {column} {operator.upper()} {subquery}"

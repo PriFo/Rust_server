@@ -6,7 +6,7 @@ class TestMySQLSyntaxHelper(unittest.TestCase):
 
     def test_select_query(self):
         columns = ['id_log', 'object', 'action']
-        table = ETablesBM_DB.LOGS_SQL
+        table = ETablesBM_DB.LOGS
         expected_query = f"SELECT id_log, object, action FROM {table}"
         generated_query = MySQLSyntaxHelper.select(table, columns)
         self.assertEqual(generated_query, expected_query)
@@ -21,7 +21,7 @@ class TestMySQLSyntaxHelper(unittest.TestCase):
 
     def test_select_with_where(self):
         columns = ['id_log', 'object', 'action']
-        table = ETablesBM_DB.LOGS_SQL
+        table = ETablesBM_DB.LOGS
         where_condition = MySQLSyntaxHelper.where('id_log', '1001', '=')
         expected_query = f"SELECT id_log, object, action FROM {table} WHERE id_log = 1001"
         generated_query = MySQLSyntaxHelper.select(table, columns, where=where_condition)

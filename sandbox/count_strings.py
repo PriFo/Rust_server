@@ -6,7 +6,7 @@ import aiofiles
 notebook_path = 'C:\\Users\\screb\\Desktop\\Dev\\rust_server\\Rust_server'
 pc_path = 'C:\\Users\\screb\\Desktop\\Dev\\Rust_server'
 c_path = 'C:\\'
-inclusive_dirs: list = ['.git', '__pycache__', 'jsons', 'txts', 'user_help_photos']
+inclusive_dirs: list = ['.git', '__pycache__', 'jsons', 'txts', 'user_help_photos', '.venv']
 inclusive_files: list = ['.env', '.gitignore']
 
 
@@ -65,7 +65,7 @@ async def try_to_check_all_files_on_pc():
 
 
 async def main():
-    is_pc = False
+    is_pc = True
     try:
         dir_list = os.listdir(notebook_path)
     except:

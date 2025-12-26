@@ -32,7 +32,11 @@ class Filter:
         return self._game_id
     
     def get_filter(self, attr: str) -> Any:
-        return self.__getattribute__(f'_{attr}_check')
+        """Получает значение фильтра по имени атрибута"""
+        attr_name = f'_{attr}_check'
+        if hasattr(self, attr_name):
+            return getattr(self, attr_name)
+        raise AttributeError(f"Filter has no attribute '{attr}'")
 
 class __ServerFilter(Filter):
 
@@ -133,6 +137,10 @@ class RustFilter(__ServerFilter):
         return self._last_wipe_check
 
     @property
+    def next_wipe_check(self) -> bool:
+        return self._next_wipe_check
+
+    @property
     def pve_check(self) -> bool:
         return self._pve_check
 
@@ -152,13 +160,22 @@ class RustFilter(__ServerFilter):
     def queued_players_check(self, value: int) -> None:
         if not isinstance(value, int):
             raise TypeError('New value type must be int')
-        self._queued_players_check = value
+        if value < 0:
+            self._queued_players_check = -1
+        else:
+            self._queued_players_check = value
     
     @last_wipe_check.setter
     def last_wipe_check(self, value: bool) -> None:
         if not isinstance(value, bool):
             raise TypeError('New value type must be bool')
         self._last_wipe_check = value
+    
+    @next_wipe_check.setter
+    def next_wipe_check(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError('New value type must be bool')
+        self._next_wipe_check = value
     
     @pve_check.setter
     def pve_check(self, value: bool) -> None:

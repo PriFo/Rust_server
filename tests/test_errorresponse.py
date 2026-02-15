@@ -1,5 +1,5 @@
 import unittest
-from errorresponse import ErrorResponse
+from src.errorresponse import ErrorResponse
 
 class TestErrorResponse(unittest.TestCase):
 

@@ -1,13 +1,22 @@
 """
 Скрипт для проверки подключения к БД
 """
+from __future__ import annotations
+
 import sys
 from os import getenv
 from dotenv import load_dotenv
 from pathlib import Path
-from pymysql import connect, Connection
-from pymysql.cursors import Cursor
-from pymysql.err import Error as PyMySQLError
+
+try:
+    from pymysql import connect, Connection
+    from pymysql.cursors import Cursor
+    from pymysql.err import Error as PyMySQLError
+except ImportError:
+    connect = None
+    Connection = None
+    Cursor = None
+    PyMySQLError = None
 
 
 def load_env():
@@ -116,6 +125,9 @@ def test_db_connection(env_vars: dict) -> tuple[bool, str, Connection | None]:
 
 def main():
     """Основная функция"""
+    if connect is None:
+        print("[ERROR] Модуль pymysql не установлен. Установите: pip install pymysql")
+        sys.exit(1)
     print("=" * 50)
     print("ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ")
     print("=" * 50)
@@ -127,12 +139,8 @@ def main():
     env_vars = check_env_variables()
     if env_vars is None:
         print("\n[ERROR] Невозможно продолжить без всех необходимых переменных")
-        print("\n[INFO] Создайте файл .env в корне проекта со следующим содержимым:")
-        print("   DB_HOST=localhost")
-        print("   DB_PORT=3306")
-        print("   DB_USER=your_user")
-        print("   DB_PASSWORD=your_password")
-        print("   DB_NAME=your_database")
+        print("\n[INFO] Скопируйте .env.example в .env и заполните значения.")
+        print("   Не храните реальные пароли и токены в git — используйте только .env (он в .gitignore).")
         sys.exit(1)
     
     # Тестируем подключение

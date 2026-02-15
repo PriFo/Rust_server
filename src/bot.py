@@ -1,27 +1,48 @@
-
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
-from dispatcher import (
-    Dispatcher as BMDp,
-    EHandlerNames as EHN
-)
+import asyncio
+
+from src.dispatcher import Dispatcher as BMDp
 from os import getenv
 import re
-from bot_handlers import (
+from src.bot_handlers import (
     get_main_menu, handle_main_menu, handle_callback_query, 
     handle_text_message, UserState, user_states
 )
-from repository import Repository
-from data_classes import Profile
-from logger import Logger
+from src.repository import Repository
+from src.data_classes import Profile
+from src.logger import Logger
+from typing import Optional
 
 
 # Константа для дебага и тестирования через телеграм
-DEBUG_PROFILE_ID = '517965582'
-ADMIN_ID = 517965582
+DEBUG_PROFILE_ID = getenv('DEBUG_PROFILE_ID', '517965582')
+ADMIN_ID = int(getenv('ADMIN_ID', '517965582'))
+
+# Глобальные экземпляры для Dependency Injection
+_bot_instance: Optional[Bot] = None
+_repo_instance: Optional[Repository] = None
+
+def get_bot_instance() -> Bot:
+    """Возвращает глобальный экземпляр Bot (создает при первом вызове)"""
+    global _bot_instance
+    if _bot_instance is None:
+        token = str(getenv('T_API_KEY'))
+        _bot_instance = Bot(
+            token=token,
+            default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
+        )
+    return _bot_instance
+
+def get_repo_instance() -> Repository:
+    """Возвращает глобальный экземпляр Repository (создает при первом вызове)"""
+    global _repo_instance
+    if _repo_instance is None:
+        _repo_instance = Repository()
+    return _repo_instance
 
 dp: Dispatcher = Dispatcher()
 bmdp: BMDp = BMDp()
@@ -37,8 +58,8 @@ def escape_markdown_v2(text: str) -> str:
 @dp.message(CommandStart())
 async def start_message(message: Message):
     """Обработчик команды /start с созданием профиля"""
-    user_id = str(message.from_user.id)
-    repo = Repository()
+    user_id = message.from_user.id
+    repo = get_repo_instance()
     
     # Проверяем, есть ли профиль в памяти или в БД
     profile = repo.profiles.get(user_id) or repo.load_profile(user_id)
@@ -79,7 +100,7 @@ async def start_message(message: Message):
         серверов и их статуса ||с сайта battlemetrics\\.com||\\. \
         \n\nОсновной моей задачей на данный момент является \
         оповещение пользователей о вайпе на добавленных \
-        в профиль серверах Rust\\.\n\nЗа дополнительной \
+        в профиль серверов Rust\\.\n\nЗа дополнительной \
         информацией отправь \\/help\\.'
     await message.answer(text=text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=get_main_menu())
     
@@ -108,36 +129,10 @@ async def help_message(message: Message):
     await message.answer(text=text, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-@bmdp.handler(handler=EHN.all_diffs)
-async def send_diffs(bot, differences: dict, profile_id: str = DEBUG_PROFILE_ID):
-    """
-    Функция для отправки изменений о сервере всем игрокам, подписанным на данную рассылку
-    
-    :param bot: Объект бота для отправки сообщений
-    :param differences: Словарь со списком изменений в информации об объектах 
-    :param profile_id: ID пользователя, которому отправляются изменения (по умолчанию DEBUG_PROFILE_ID для дебага)
-
-    :return None:
-    """
-    if not isinstance(differences, dict):
-        raise TypeError(f'Differences must have type dict not {type(differences)}')
-    
-    text = _diffs_to_str(differences)
-    await bot.send_message(chat_id=profile_id, text=text)
-
-
-def _diffs_to_str(differences: dict) -> str:
-    """Преобразует словарь различий в строку с экранированием для Markdown V2"""
-    description = differences.get('description', '')
-    if not description:
-        return 'Нет описания изменений'
-    return escape_markdown_v2(description)
-
-
 @dp.message(Command('report'))
 async def report_command(message: Message):
     """Обработчик команды /report"""
-    user_id = str(message.from_user.id)
+    user_id = message.from_user.id
     user_states[user_id] = UserState.WAITING_REPORT
     await message.answer(
         "Опишите проблему или предложение. Ваше сообщение будет отправлено администратору.",
@@ -148,8 +143,8 @@ async def report_command(message: Message):
 @dp.message(Command('stop'))
 async def stop_command(message: Message):
     """Обработчик команды /stop для деактивации профиля"""
-    user_id = str(message.from_user.id)
-    repo = Repository()
+    user_id = message.from_user.id
+    repo = get_repo_instance()
     
     # Проверяем, существует ли профиль
     profile = repo.profiles.get(user_id) or repo.load_profile(user_id)
@@ -182,24 +177,19 @@ async def stop_command(message: Message):
 @dp.message()
 async def any_message(message: Message):
     """Обработчик всех сообщений"""
-    user_id = str(message.from_user.id) if message.from_user else 'unknown'
-    repo = Repository()
+    user_id = message.from_user.id if message.from_user else 0
+    # Используем глобальный экземпляр Repository
+    repo = get_repo_instance()
+    # Используем bot из message (aiogram автоматически инжектирует его)
+    bot = message.bot if hasattr(message, 'bot') else get_bot_instance()
     
     try:
         # Проверяем, является ли сообщение командой из главного меню
         if message.text in ["📊 Мои серверы", "➕ Добавить сервер", "👤 Мои игроки", "➕ Добавить игрока",
                             "⚙️ Настройки фильтров", "📋 Список серверов", "ℹ️ Помощь", "📝 Отчет"]:
-            bot = Bot(
-                token=str(getenv('T_API_KEY')),
-                default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
-            )
             await handle_main_menu(message, bot)
         else:
             # Обрабатываем как обычное текстовое сообщение
-            bot = Bot(
-                token=str(getenv('T_API_KEY')),
-                default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
-            )
             await handle_text_message(message, bot)
     except Exception as e:
         import traceback
@@ -215,26 +205,25 @@ async def any_message(message: Message):
         )
         # Пытаемся отправить пользователю сообщение об ошибке
         try:
-            bot = Bot(
-                token=str(getenv('T_API_KEY')),
-                default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
-            )
+            bot = get_bot_instance()
             await bot.send_message(chat_id=user_id, text="Произошла ошибка при обработке вашего сообщения. Попробуйте позже.")
-        except:
-            pass  # Если не удалось отправить сообщение, просто пропускаем
+        except (ConnectionError, TimeoutError, ValueError) as e:
+            logger.warning(f"Не удалось отправить сообщение об ошибке пользователю {user_id}: {e}")
+        except Exception as e:
+            # Логируем неожиданные ошибки, но не прерываем выполнение
+            logger.error(f"Неожиданная ошибка при отправке сообщения об ошибке: {e}")
 
 
 @dp.callback_query()
 async def callback_handler(callback: CallbackQuery):
     """Обработчик callback запросов"""
-    user_id = str(callback.from_user.id) if callback.from_user else 'unknown'
-    repo = Repository()
+    user_id = callback.from_user.id if callback.from_user else 0
+    # Используем глобальный экземпляр Repository
+    repo = get_repo_instance()
+    # Используем bot из callback (aiogram автоматически инжектирует его)
+    bot = callback.bot if hasattr(callback, 'bot') else get_bot_instance()
     
     try:
-        bot = Bot(
-            token=str(getenv('T_API_KEY')),
-            default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
-        )
         await handle_callback_query(callback, bot)
     except Exception as e:
         import traceback
@@ -250,28 +239,24 @@ async def callback_handler(callback: CallbackQuery):
         )
         # Пытаемся отправить пользователю сообщение об ошибке
         try:
-            bot = Bot(
-                token=str(getenv('T_API_KEY')),
-                default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
-            )
+            bot = get_bot_instance()
             await bot.send_message(chat_id=user_id, text="Произошла ошибка при обработке запроса. Попробуйте позже.")
-        except:
-            pass  # Если не удалось отправить сообщение, просто пропускаем
+        except (ConnectionError, TimeoutError, ValueError) as e:
+            logger.warning(f"Не удалось отправить сообщение об ошибке пользователю {user_id}: {e}")
+        except Exception as e:
+            # Логируем неожиданные ошибки, но не прерываем выполнение
+            logger.error(f"Неожиданная ошибка при отправке сообщения об ошибке: {e}")
 
 
 async def send_restart_notifications():
     """Отправляет уведомления о перезапуске всем неактивным профилям"""
-    repo = Repository()
-    token = str(getenv('T_API_KEY'))
-    bot = Bot(
-        token=token,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
-    )
+    # Используем глобальные экземпляры
+    repo = get_repo_instance()
+    bot = get_bot_instance()
     
     # Получаем все профили, которые неактивны
     try:
-        # Используем публичный метод для получения неактивных профилей
-        inactive_profiles = repo.get_inactive_profiles()
+        inactive_profiles = repo.get_inactive_profile_ids()
         logger.info(f"Отправка уведомлений о перезапуске", {'count': len(inactive_profiles)})
         
         if not inactive_profiles:
@@ -308,6 +293,7 @@ async def send_restart_notifications():
 
 
 async def start_bot():
+    """Запускает бота (вызывается из main_no_gui.py)"""
     logger.section("ЗАПУСК TELEGRAM БОТА")
     token = str(getenv('T_API_KEY'))
     if not token:
@@ -315,10 +301,8 @@ async def start_bot():
         raise ValueError("T_API_KEY environment variable is not set")
     
     logger.info("Инициализация бота", {'token_length': len(token)})
-    bot = Bot(
-        token=token,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
-    )
+    # Используем глобальный экземпляр Bot
+    bot = get_bot_instance()
     
     logger.info("Добавление бота в Dispatcher")
     await bmdp.add_bot(bot)

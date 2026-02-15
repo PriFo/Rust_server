@@ -4,10 +4,11 @@
 from aiogram import Bot
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.enums import ParseMode
-from repository import Repository
-from data_classes import Profile, Server
-from filters import RustFilter, EGames, PlayerFilter, EFilterTypes
-from logger import Logger
+
+from src.repository import Repository
+from src.data_classes import Profile, Server, RustServer, Player
+from src.filters import RustFilter, EGames, PlayerFilter, EFilterTypes
+from src.logger import Logger
 import re
 
 # Константы (дублируем из bot.py чтобы избежать циклического импорта)
@@ -23,15 +24,15 @@ def escape_markdown_v2(text: str) -> str:
 def format_server_info_from_db(server_info: dict) -> str:
     """Форматирует информацию о сервере из БД в читаемый текст"""
     lines = [f"📊 Информация о сервере:\n"]
-    lines.append(f"Название: {server_info.get('name', 'N/A')}")
-    lines.append(f"ID: {server_info.get('id', 'N/A')}")
+    lines.append(f"Название: {server_info.get('server_name', 'N/A')}")
+    lines.append(f"ID: {server_info.get('id_server', 'N/A')}")
     lines.append(f"Приватный: {'Да' if server_info.get('private') else 'Нет'}")
     if server_info.get('country'):
         lines.append(f"Страна: {server_info.get('country')}")
     if server_info.get('rank'):
         lines.append(f"Ранг: {server_info.get('rank')}")
-    if server_info.get('pve') is not None:
-        lines.append(f"PVE: {'Да' if server_info.get('pve') else 'Нет'}")
+    if server_info.get('is_pve') is not None:
+        lines.append(f"PVE: {'Да' if server_info.get('is_pve') else 'Нет'}")
     if server_info.get('official') is not None:
         lines.append(f"Официальный: {'Да' if server_info.get('official') else 'Нет'}")
     if server_info.get('modded') is not None:
@@ -51,14 +52,39 @@ def format_server_info_from_db(server_info: dict) -> str:
 def format_player_info_from_db(player_info: dict) -> str:
     """Форматирует информацию об игроке из БД в читаемый текст"""
     lines = [f"👤 Информация об игроке:\n"]
-    lines.append(f"Имя: {player_info.get('name', 'N/A')}")
-    lines.append(f"ID: {player_info.get('id', 'N/A')}")
+    lines.append(f"Имя: {player_info.get('nickname', 'N/A')}")
+    lines.append(f"ID: {player_info.get('id_players', 'N/A')}")
     lines.append(f"Приватный профиль: {'Да' if player_info.get('private') else 'Нет'}")
     return "\n".join(lines)
 
 # Глобальные переменные для состояний пользователей
 user_states = {}  # {user_id: state}
 user_data = {}  # {user_id: data}
+
+# Кэш для Repository (синглтон, но избегаем повторных обращений)
+_repo_cache = None
+
+def get_repository():
+    """Получает экземпляр Repository (кэшированный)"""
+    global _repo_cache
+    if _repo_cache is None:
+        _repo_cache = Repository()
+    return _repo_cache
+
+def get_or_create_profile(user_id: str, from_user) -> Profile:
+    """Получает или создает профиль пользователя"""
+    repo = get_repository()
+    profile = repo.profiles.get(user_id) or repo.load_profile(user_id)
+    if not profile:
+        profile = Profile(
+            id=user_id,
+            nickname=from_user.username or "",
+            name=from_user.first_name or "",
+            surname=from_user.last_name or ""
+        )
+        repo.add_profile(profile, user_id)
+        repo._insert_profile(user_id)
+    return profile
 
 # Состояния пользователей
 class UserState:
@@ -154,10 +180,19 @@ def get_rust_filters_menu() -> InlineKeyboardMarkup:
 
 def get_servers_list_keyboard(page: int = 0, servers_per_page: int = 10) -> InlineKeyboardMarkup:
     """Создает клавиатуру со списком серверов с пагинацией"""
-    repo = Repository()
+    repo = get_repository()
     servers = repo.get_servers()
     server_list = list(servers.items())
-    total_pages = (len(server_list) + servers_per_page - 1) // servers_per_page
+    
+    # Проверка на пустой список
+    if not server_list:
+        # Возвращаем клавиатуру с сообщением о пустом списке
+        keyboard_buttons = [[InlineKeyboardButton(text="❌ Отмена", callback_data="servers_cancel")]]
+        return InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+    
+    total_pages = max(1, (len(server_list) + servers_per_page - 1) // servers_per_page)
+    # Ограничиваем page в допустимых пределах
+    page = max(0, min(page, total_pages - 1))
     
     start_idx = page * servers_per_page
     end_idx = min(start_idx + servers_per_page, len(server_list))
@@ -170,15 +205,16 @@ def get_servers_list_keyboard(page: int = 0, servers_per_page: int = 10) -> Inli
             callback_data=f"server_select_{server_id}"
         )])
     
-    # Кнопки навигации
+    # Кнопки навигации (только если есть больше одной страницы)
     nav_buttons = []
-    if page > 0:
-        nav_buttons.append(InlineKeyboardButton(text="◀️ Назад", callback_data=f"servers_page_{page-1}"))
-    nav_buttons.append(InlineKeyboardButton(text=f"Страница {page+1}/{total_pages}", callback_data="servers_info"))
-    if page < total_pages - 1:
-        nav_buttons.append(InlineKeyboardButton(text="Вперед ▶️", callback_data=f"servers_page_{page+1}"))
+    if total_pages > 1:
+        if page > 0:
+            nav_buttons.append(InlineKeyboardButton(text="◀️ Назад", callback_data=f"servers_page_{page-1}"))
+        nav_buttons.append(InlineKeyboardButton(text=f"Страница {page+1}/{total_pages}", callback_data="servers_info"))
+        if page < total_pages - 1:
+            nav_buttons.append(InlineKeyboardButton(text="Вперед ▶️", callback_data=f"servers_page_{page+1}"))
+        keyboard_buttons.append(nav_buttons)
     
-    keyboard_buttons.append(nav_buttons)
     keyboard_buttons.append([InlineKeyboardButton(text="❌ Отмена", callback_data="servers_cancel")])
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
@@ -194,13 +230,13 @@ async def handle_main_menu(message: Message, bot: Bot):
     })
     
     if text == "📊 Мои серверы":
-        repo = Repository()
+        repo = get_repository()
         # Загружаем профиль (load_profile сам проверит кэш)
         profile = repo.profiles.get(user_id) or repo.load_profile(user_id)
         if profile:
             # Всегда перезагружаем серверы из БД для актуальности данных
-            repo._load_profile_servers(user_id, profile)
-            servers = profile._servers
+            repo._load_profile_subscriptions(user_id, profile)
+            servers = profile.servers
             if servers:
                 # Создаем клавиатуру с кнопками для каждого сервера
                 keyboard_buttons = []
@@ -259,10 +295,10 @@ async def handle_main_menu(message: Message, bot: Bot):
         await message.answer(text=help_text, parse_mode=ParseMode.MARKDOWN_V2)
     
     elif text == "👤 Мои игроки":
-        repo = Repository()
+        repo = get_repository()
         profile = repo.profiles.get(user_id) or repo.load_profile(user_id)
         if profile:
-            players = profile._players
+            players = profile.players
             if players:
                 # Создаем клавиатуру с кнопками для каждого игрока
                 keyboard_buttons = []
@@ -305,7 +341,7 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
     
     if data == "activate_profile_yes":
         # Активация профиля после перезапуска бота
-        repo = Repository()
+        repo = get_repository()
         if repo.activate_profile(user_id):
             await callback.message.edit_text(
                 "Отлично! Ваш профиль активирован. Бот будет отслеживать изменения для ваших серверов.",
@@ -341,13 +377,12 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
         
         if is_view_only:
             # Показываем информацию о сервере
-            repo = Repository()
+            repo = get_repository()
             server_info = repo.get_server_full_info(server_id)
             if server_info:
                 # Пытаемся получить актуальную информацию через API
-                from battlemetrics_requests import BattleMetricsResponse
+                from src.battlemetrics_requests import BattleMetricsResponse
                 from aiohttp import ClientSession
-                from data_classes import Server
                 import asyncio
                 
                 async def show_server_info():
@@ -356,8 +391,8 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
                         await bm_response.async_initialize({})
                         async with ClientSession() as session:
                             server_obj = await bm_response._get_server_info(session, server_id)
-                            if isinstance(server_obj, Server):
-                                info_text = f"📊 Информация о сервере:\n\n{server_obj.__str__()}"
+                            if isinstance(server_obj, (Server, RustServer)):
+                                info_text = f"📊 Информация о сервере:\n\n{str(server_obj)}"
                                 await bot.send_message(chat_id=user_id, text=escape_markdown_v2(info_text), parse_mode=ParseMode.MARKDOWN_V2)
                             else:
                                 # Если не удалось получить через API, показываем из БД
@@ -375,20 +410,8 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
             user_data.pop(user_id, None)
         else:
             # Добавляем сервер к профилю пользователя
-            repo = Repository()
-            profile = repo.profiles.get(user_id)
-            if not profile:
-                # Загружаем профиль из БД или создаем новый
-                profile = repo.load_profile(user_id)
-                if not profile:
-                    profile = Profile(
-                        id=user_id,
-                        nickname=callback.from_user.username or "",
-                        name=callback.from_user.first_name or "",
-                        surname=callback.from_user.last_name or ""
-                    )
-                    repo.add_profile(profile, user_id)
-                    repo._insert_profile(user_id)
+            repo = get_repository()
+            profile = get_or_create_profile(user_id, callback.from_user)
             
             # Получаем название сервера
             servers = repo.get_servers()
@@ -403,7 +426,7 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
                 try:
                     server_info = repo.get_server_full_info(server_id)
                     if server_info:
-                        server_name = server_info.get('name') or f"Server {server_id}"
+                        server_name = server_info.get('server_name') or f"Server {server_id}"
                     else:
                         server_name = f"Server {server_id}"
                 except Exception as e:
@@ -434,17 +457,8 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
         await callback.message.edit_reply_markup(reply_markup=keyboard)
     
     elif data.startswith("filter_"):
-        repo = Repository()
-        profile = repo.profiles.get(user_id) or repo.load_profile(user_id)
-        if not profile:
-            profile = Profile(
-                id=user_id,
-                nickname=callback.from_user.username or "",
-                name=callback.from_user.first_name or "",
-                surname=callback.from_user.last_name or ""
-            )
-            repo.add_profile(profile, user_id)
-            repo._insert_profile(user_id)
+        repo = get_repository()
+        profile = get_or_create_profile(user_id, callback.from_user)
         
         # Главное меню фильтров
         if data == "filter_menu_main":
@@ -626,13 +640,12 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
         
         if is_view_only:
             # Показываем информацию об игроке
-            repo = Repository()
+            repo = get_repository()
             player_info = repo.get_player_full_info(player_id)
             if player_info:
                 # Пытаемся получить актуальную информацию через API
-                from battlemetrics_requests import BattleMetricsResponse
+                from src.battlemetrics_requests import BattleMetricsResponse
                 from aiohttp import ClientSession
-                from data_classes import Player
                 import asyncio
                 
                 async def show_player_info():
@@ -642,7 +655,7 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
                         async with ClientSession() as session:
                             player_obj = await bm_response.async_get_player_info(session, player_id)
                             if isinstance(player_obj, Player):
-                                info_text = f"👤 Информация об игроке:\n\n{player_obj.__str__()}"
+                                info_text = f"👤 Информация об игроке:\n\n{str(player_obj)}"
                                 await bot.send_message(chat_id=user_id, text=escape_markdown_v2(info_text), parse_mode=ParseMode.MARKDOWN_V2)
                             else:
                                 # Если не удалось получить через API, показываем из БД
@@ -660,7 +673,7 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
             user_data.pop(user_id, None)
         else:
             # Добавляем игрока к профилю пользователя
-            repo = Repository()
+            repo = get_repository()
             profile = repo.profiles.get(user_id)
             if not profile:
                 # Загружаем профиль из БД или создаем новый
@@ -701,34 +714,22 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
             return
         
         suggestion_id = int(data.replace("admin_answer_", ""))
-        repo = Repository()
-        suggestions = repo.get_unanswered_suggestions()
-        suggestion_data = None
-        for sug in suggestions:
-            if sug[0] == suggestion_id:
-                suggestion_data = sug
-                break
-        
-        if suggestion_data:
-            user_states[user_id] = UserState.ADMIN_ANSWERING_REPORT
-            user_data[user_id] = {'suggestion_id': suggestion_id}
-            report_text = f"Отчет #{suggestion_id}\nОт: {suggestion_data[4]} ({suggestion_data[5]})\nВремя: {suggestion_data[3]}\n\n{suggestion_data[2]}"
-            await callback.message.edit_text(f"Отчет для ответа:\n\n{report_text}\n\nВведите ваш ответ:", parse_mode=None)
-        else:
-            await callback.answer("Отчет не найден.", show_alert=True)
+        repo = get_repository()
+        # В новой схеме БД таблица suggestions может отсутствовать
+        # Пропускаем этот функционал для совместимости
+        await callback.answer("Функционал ответов на отчеты временно недоступен.", show_alert=True)
     
     elif data.startswith("view_my_server_"):
         # Пользователь выбирает свой сервер для просмотра
         server_id = data.replace("view_my_server_", "")
         user_data[user_id] = {'view_server_only': True}
         # Используем ту же логику, что и для server_select_ - обрабатываем напрямую
-        repo = Repository()
+        repo = get_repository()
         server_info = repo.get_server_full_info(server_id)
         if server_info:
             # Пытаемся получить актуальную информацию через API
-            from battlemetrics_requests import BattleMetricsResponse
+            from src.battlemetrics_requests import BattleMetricsResponse
             from aiohttp import ClientSession
-            from data_classes import Server
             import asyncio
             
             async def show_server_info():
@@ -737,8 +738,8 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
                     await bm_response.async_initialize({})
                     async with ClientSession() as session:
                         server_obj = await bm_response._get_server_info(session, server_id)
-                        if isinstance(server_obj, Server):
-                            info_text = f"📊 Информация о сервере:\n\n{server_obj.__str__()}"
+                        if isinstance(server_obj, (Server, RustServer)):
+                            info_text = f"📊 Информация о сервере:\n\n{str(server_obj)}"
                             await bot.send_message(chat_id=user_id, text=escape_markdown_v2(info_text), parse_mode=ParseMode.MARKDOWN_V2)
                         else:
                             # Если не удалось получить через API, показываем из БД
@@ -762,13 +763,12 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
         player_id = data.replace("view_my_player_", "")
         user_data[user_id] = {'view_player_only': True}
         # Используем ту же логику, что и для player_select_ - обрабатываем напрямую
-        repo = Repository()
+        repo = get_repository()
         player_info = repo.get_player_full_info(player_id)
         if player_info:
             # Пытаемся получить актуальную информацию через API
-            from battlemetrics_requests import BattleMetricsResponse
+            from src.battlemetrics_requests import BattleMetricsResponse
             from aiohttp import ClientSession
-            from data_classes import Player
             import asyncio
             
             async def show_player_info():
@@ -778,7 +778,7 @@ async def handle_callback_query(callback: CallbackQuery, bot: Bot):
                     async with ClientSession() as session:
                         player_obj = await bm_response.async_get_player_info(session, player_id)
                         if isinstance(player_obj, Player):
-                            info_text = f"👤 Информация об игроке:\n\n{player_obj.__str__()}"
+                            info_text = f"👤 Информация об игроке:\n\n{str(player_obj)}"
                             await bot.send_message(chat_id=user_id, text=escape_markdown_v2(info_text), parse_mode=ParseMode.MARKDOWN_V2)
                         else:
                             # Если не удалось получить через API, показываем из БД
@@ -815,22 +815,12 @@ async def handle_text_message(message: Message, bot: Bot):
         # Валидация ID сервера
         if text.isdigit():
             server_id = text
-            repo = Repository()
-            profile = repo.profiles.get(user_id) or repo.load_profile(user_id)
-            if not profile:
-                profile = Profile(
-                    id=user_id,
-                    nickname=message.from_user.username or "",
-                    name=message.from_user.first_name or "",
-                    surname=message.from_user.last_name or ""
-                )
-                repo.add_profile(profile, user_id)
-                repo._insert_profile(user_id)
+            repo = get_repository()
+            profile = get_or_create_profile(user_id, message.from_user)
             
             # Проверяем существование сервера через API (асинхронно)
-            from battlemetrics_requests import BattleMetricsResponse
+            from src.battlemetrics_requests import BattleMetricsResponse
             from aiohttp import ClientSession
-            from errorresponse import ErrorResponse
             import asyncio
             
             async def check_and_add_server():
@@ -839,7 +829,7 @@ async def handle_text_message(message: Message, bot: Bot):
                     await bm_response.async_initialize({})
                     async with ClientSession() as session:
                         server_info = await bm_response._get_server_info(session, server_id)
-                        if isinstance(server_info, Server):
+                        if isinstance(server_info, (Server, RustServer)):
                             # Сервер существует, добавляем
                             if repo.add_server_to_profile(user_id, server_id, server_info.name):
                                 escaped_name = escape_markdown_v2(server_info.name)
@@ -863,7 +853,7 @@ async def handle_text_message(message: Message, bot: Bot):
                 except Exception as e:
                     import traceback
                     error_trace = traceback.format_exc()
-                    repo = Repository()
+                    repo = get_repository()
                     repo.log_action(
                         object='BotHandlers',
                         action='check_and_add_server',
@@ -888,7 +878,7 @@ async def handle_text_message(message: Message, bot: Bot):
     
     elif state == UserState.WAITING_SERVER_NAME:
         # Поиск сервера по названию
-        repo = Repository()
+        repo = get_repository()
         try:
             # Поиск в БД с ограничением по игре rust
             matches = repo.search_servers_by_name(text, game_id='rust', limit=10)
@@ -946,7 +936,7 @@ async def handle_text_message(message: Message, bot: Bot):
         filter_data = user_data.get(user_id, {})
         filter_type = filter_data.get('filter_type')
         filter_category = filter_data.get('filter_category', 'server')
-        repo = Repository()
+        repo = get_repository()
         profile = repo.profiles.get(user_id) or repo.load_profile(user_id)
         
         if not profile:
@@ -1014,22 +1004,12 @@ async def handle_text_message(message: Message, bot: Bot):
         # Валидация ID игрока
         if text.isdigit():
             player_id = text
-            repo = Repository()
-            profile = repo.profiles.get(user_id) or repo.load_profile(user_id)
-            if not profile:
-                profile = Profile(
-                    id=user_id,
-                    nickname=message.from_user.username or "",
-                    name=message.from_user.first_name or "",
-                    surname=message.from_user.last_name or ""
-                )
-                repo.add_profile(profile, user_id)
-                repo._insert_profile(user_id)
+            repo = get_repository()
+            profile = get_or_create_profile(user_id, message.from_user)
             
             # Проверяем существование игрока через API (асинхронно)
-            from battlemetrics_requests import BattleMetricsResponse
+            from src.battlemetrics_requests import BattleMetricsResponse
             from aiohttp import ClientSession
-            from data_classes import Player
             import asyncio
             
             async def check_and_add_player():
@@ -1062,7 +1042,7 @@ async def handle_text_message(message: Message, bot: Bot):
                 except Exception as e:
                     import traceback
                     error_trace = traceback.format_exc()
-                    repo = Repository()
+                    repo = get_repository()
                     repo.log_action(
                         object='BotHandlers',
                         action='check_and_add_player',
@@ -1087,7 +1067,7 @@ async def handle_text_message(message: Message, bot: Bot):
     
     elif state == UserState.WAITING_PLAYER_NAME:
         # Поиск игрока по имени
-        repo = Repository()
+        repo = get_repository()
         # Поиск в БД
         matches = repo.search_players_by_name(text, limit=10)
         if matches:
@@ -1123,31 +1103,15 @@ async def handle_text_message(message: Message, bot: Bot):
     
     elif state == UserState.WAITING_REPORT:
         # Отправка отчета администратору
-        repo = Repository()
+        repo = get_repository()
         
-        # Сохраняем отчет в БД
-        suggestion_id = repo.add_suggestion(user_id, text)
-        
-        # Получаем последние логи с ошибками
-        logs = repo.get_recent_error_logs(limit=10)
-        if logs:
-            # Форматируем логи для отображения
-            log_text = "\n".join([
-                f"[{log[6]}] {log[1]}.{log[2]}: {log[4] or log[8] or 'No details'}" 
-                for log in logs
-            ])
-        else:
-            log_text = "Ошибок не найдено в логах БД"
-        
-        report_text = f"Отчет от пользователя {message.from_user.id} (@{message.from_user.username or 'N/A'}):\n\n{text}\n\nПоследние ошибки:\n{log_text}"
+        # В новой схеме БД таблица suggestions может отсутствовать
+        # Отправляем отчет напрямую администратору
+        report_text = f"Отчет от пользователя {message.from_user.id} (@{message.from_user.username or 'N/A'}):\n\n{text}"
         
         try:
-            # Отправляем админу с кнопкой для ответа
-            keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="📝 Ответить", callback_data=f"admin_answer_{suggestion_id}")]
-            ])
             await bot.send_message(chat_id=ADMIN_ID, text=escape_markdown_v2(report_text), 
-                                 parse_mode=ParseMode.MARKDOWN_V2, reply_markup=keyboard)
+                                 parse_mode=ParseMode.MARKDOWN_V2)
             await message.answer("Ваш отчет отправлен администратору. Спасибо!", parse_mode=None)
         except Exception as e:
             import traceback
@@ -1166,31 +1130,11 @@ async def handle_text_message(message: Message, bot: Bot):
     
     elif state == UserState.ADMIN_ANSWERING_REPORT:
         # Админ отвечает на отчет
-        repo = Repository()
-        suggestion_id = user_data.get(user_id, {}).get('suggestion_id')
-        if suggestion_id:
-            user_id_to_answer = repo.get_suggestion_user_id(suggestion_id)
-            if user_id_to_answer:
-                try:
-                    # Отправляем ответ пользователю
-                    answer_text = f"Ответ администратора:\n\n{text}"
-                    await bot.send_message(chat_id=user_id_to_answer, text=answer_text, parse_mode=None)
-                    
-                    # Отмечаем отчет как отвеченный
-                    repo.answer_suggestion(suggestion_id, text)
-                    
-                    await message.answer("Ответ отправлен пользователю.", parse_mode=None)
-                except Exception as e:
-                    await message.answer(f"Ошибка при отправке ответа: {str(e)}", parse_mode=None)
-            else:
-                await message.answer("Не удалось найти пользователя для ответа.", parse_mode=None)
-        else:
-            await message.answer("Ошибка: не указан ID отчета.", parse_mode=None)
-        
+        # В новой схеме БД этот функционал временно недоступен
+        await message.answer("Функционал ответов на отчеты временно недоступен.", parse_mode=None)
         user_states.pop(user_id, None)
         user_data.pop(user_id, None)
     
     else:
         # Обычное сообщение - показываем главное меню
         await message.answer("Используйте меню для навигации.", reply_markup=get_main_menu(), parse_mode=None)
-

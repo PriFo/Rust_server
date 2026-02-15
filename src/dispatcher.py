@@ -1,58 +1,52 @@
 import traceback
-from data_classes import Profile
-from filters import Filter
-from repository import Repository
+from typing import Callable, Optional, Any, Dict
+
+from src.data_classes import Profile
+from src.filters import Filter, RustFilter, ServerFilter, PlayerFilter
+from src.repository import Repository
 from asyncio import gather, create_task
 from aiogram import Bot
-from typing import Callable, Optional, Any
 
 
 class EHandlerNames:
     """
     Класс перечисления для стандартизирования наименований существующих обработчиков
-    Значения соответствуют ключам из API BattleMetrics (attributes и details)
+    Обновлен для соответствия новой схеме БД и обновленным data_classes
     """
 
-    # Server attributes (соответствуют ключам из data.attributes)
+    # Server attributes (соответствуют ключам из таблицы servers)
     players: str = "players"
-    maxPlayers: str = "maxPlayers"
+    max_players: str = "max_players"
     status: str = "status"
     ip: str = "ip"
     port: str = "port"
     private: str = "private"
-    queryStatus: str = "queryStatus"
     country: str = "country"
-    address: str = "address"
-    updatedAt: str = "updatedAt"
-    createdAt: str = "createdAt"
-    portQuery: str = "portQuery"
     rank: str = "rank"
 
-    # Rust details (соответствуют ключам из data.attributes.details)
+    # Rust details (соответствуют ключам из таблицы rust_servers)
     rust_queued_players: str = "rust_queued_players"
     rust_last_wipe: str = "rust_last_wipe"
     rust_next_wipe: str = "rust_next_wipe"
     rust_next_wipe_type: str = "rust_next_wipe_type"
-    pve: str = "pve"
-    rust_url: str = "rust_url"
-    rust_maps_url: str = "rust_maps_url"
-    rust_maps_thumbnailUrl: str = "rust_maps_thumbnailUrl"
-    serverSteamId: str = "serverSteamId"
-    rust_modded: str = "rust_modded"
+    is_pve: str = "is_pve"
     official: str = "official"
+    rust_url: str = "rust_url"
+    map_url: str = "map_url"
+    thumbnail_url: str = "thumbnail_url"
+    steam_id: str = "steam_id"
+    modded: str = "modded"
     rust_description: str = "rust_description"
-    rust_gamemode: str = "rust_gamemode"
-    rust_born: str = "rust_born"
-    rust_last_ent_drop: str = "rust_last_ent_drop"
-    rust_world_seed: str = "rust_world_seed"
-    rust_world_size: str = "rust_world_size"
-    
-    # Player attributes (соответствуют ключам из data.attributes)
+    gamemode: str = "gamemode"
+
+    # Player attributes (соответствуют ключам из таблицы players)
     player_name: str = "name"
     player_private: str = "private"
-    player_positiveMatch: str = "positiveMatch"
-    player_createdAt: str = "createdAt"
-    player_updatedAt: str = "updatedAt"
+    positive_match: str = "positive_match"
+    
+    # Player online status
+    online: str = "online"
+    online_server_id: str = "online_server_id"
     
     # All differences
     all_diffs: str = 'differences'
@@ -114,7 +108,7 @@ class Dispatcher:
         if tasks:
             await gather(*tasks)
     
-    async def __handle_server_differences_for_profile(self, id_chat: str, profile: Profile, diffs: list) -> None:
+    async def __handle_server_differences_for_profile(self, id_chat: int, profile: Profile, diffs: list) -> None:
         """
         Обрабатывает изменения серверов для конкретного профиля с учетом фильтров
         Теперь проверяет каждое изменение и вызывает соответствующий обработчик
@@ -123,7 +117,7 @@ class Dispatcher:
             return
         
         # Получаем список отслеживаемых серверов профиля
-        tracked_servers = list(profile._servers.keys()) if hasattr(profile, '_servers') and profile._servers else []
+        tracked_servers = list(profile.servers.keys()) if hasattr(profile, 'servers') and profile.servers else []
         
         for diff in diffs:
             # Проверяем, отслеживает ли пользователь этот сервер
@@ -139,7 +133,7 @@ class Dispatcher:
                     continue
                 
                 server_found = False
-                for sid, server in profile._servers.items():
+                for sid, server in profile.servers.items():
                     if hasattr(server, 'name') and server.name == server_name:
                         server_found = True
                         break
@@ -168,7 +162,7 @@ class Dispatcher:
                     if key in ['name', 'game_id']:
                         continue
                     
-                    # Проверяем, нужно ли отправлять это изменение
+                    # Проверяем, нужно ли отправвать это изменение
                     should_send = self._check_single_change(key, new_value, old_values, filter_obj)
                     
                     if should_send:
@@ -248,7 +242,7 @@ class Dispatcher:
         if tasks:
             await gather(*tasks)
     
-    async def __handle_player_differences_for_profile(self, id_chat: str, profile: Profile, diffs: list) -> None:
+    async def __handle_player_differences_for_profile(self, id_chat: int, profile: Profile, diffs: list) -> None:
         """
         Обрабатывает изменения игроков для конкретного профиля
         Проверяет, отслеживает ли пользователь этого игрока
@@ -257,7 +251,7 @@ class Dispatcher:
             return
         
         # Получаем список отслеживаемых игроков профиля
-        tracked_players = list(profile._players.keys()) if hasattr(profile, '_players') else []
+        tracked_players = list(profile.players.keys()) if hasattr(profile, 'players') else []
         
         for diff in diffs:
             player_id = diff.get('player_id')
@@ -267,42 +261,46 @@ class Dispatcher:
             if player_id not in tracked_players:
                 continue
             
+            # Получаем фильтр игроков для профиля
+            player_filter = profile.get_filter('player_filter')
+            if not player_filter:
+                continue
+            
             # Получаем список изменений
             new_values = diff.get('new', [])
             old_values = diff.get('old', [])
             
-            if not new_values and not old_values:
-                continue
-            
-            # Формируем сообщение об изменениях
-            changes_text = []
+            # Проверяем изменения согласно фильтру
+            filtered_changes = []
             for change in new_values:
                 for key, value in change.items():
-                    if key == 'online':
+                    # Проверяем фильтр для этого поля
+                    if key == 'name' and hasattr(player_filter, 'player_name_check') and player_filter.player_name_check:
+                        old_name = self._get_old_value_from_list('name', old_values)
+                        filtered_changes.append(f"Имя изменено: {old_name} → {value}")
+                    elif key == 'private' and hasattr(player_filter, 'player_private_check') and player_filter.player_private_check:
+                        old_private = self._get_old_value_from_list('private', old_values)
+                        old_status = "приватный" if old_private else "публичный"
+                        new_status = "приватный" if value else "публичный"
+                        filtered_changes.append(f"Приватность: {old_status} → {new_status}")
+                    elif key == 'online' and hasattr(player_filter, 'check_online_status') and player_filter.check_online_status:
                         old_online = self._get_old_value_from_list('online', old_values)
-                        status_text = "онлайн" if value else "оффлайн"
-                        old_status_text = "онлайн" if old_online else "оффлайн"
-                        changes_text.append(f"Статус: {old_status_text} → {status_text}")
-                    elif key == 'online_server_id':
-                        old_server_id = self._get_old_value_from_list('online_server_id', old_values)
-                        if old_server_id != value:
-                            if value:
-                                changes_text.append(f"Игрок зашел на сервер (ID: {value})")
-                            else:
-                                changes_text.append(f"Игрок вышел с сервера (ID: {old_server_id})")
-                    elif key == 'server_online':
+                        old_status = "онлайн" if old_online else "оффлайн"
+                        new_status = "онлайн" if value else "оффлайн"
+                        filtered_changes.append(f"Статус: {old_status} → {new_status}")
+                    elif key == 'server_online' and hasattr(player_filter, 'check_server_change') and player_filter.check_server_change:
                         if isinstance(value, dict):
                             server_id = value.get('server_id')
-                            online = value.get('online')
+                            online = value.get('is_online', False)
                             old_server_online = self._get_old_value_from_list('server_online', old_values)
                             if isinstance(old_server_online, dict) and old_server_online.get('server_id') == server_id:
-                                old_online = old_server_online.get('online', False)
+                                old_online = old_server_online.get('is_online', False)
                                 if old_online != online:
-                                    status_text = "онлайн" if online else "оффлайн"
-                                    changes_text.append(f"На сервере {server_id}: {status_text}")
+                                    status_text = "зашел на" if online else "вышел с"
+                                    filtered_changes.append(f"Игрок {status_text} сервер {server_id}")
             
-            if changes_text:
-                message_text = f"Изменения у игрока {player_name} (ID: {player_id}):\n" + "\n".join(changes_text)
+            if filtered_changes:
+                message_text = f"Изменения у игрока {player_name} (ID: {player_id}):\n" + "\n".join(filtered_changes)
                 try:
                     await self._bot.send_message(chat_id=id_chat, text=message_text, parse_mode=None)
                 except Exception as e:
@@ -325,14 +323,31 @@ class Dispatcher:
     def _get_handler_name_for_field(self, field: str) -> Optional[str]:
         """Возвращает имя обработчика для поля"""
         field_to_handler = {
+            # Поля сервера (ServerFilter)
             'players': EHandlerNames.players,
-            'maxPlayers': EHandlerNames.maxPlayers,
+            'max_players': EHandlerNames.max_players,
             'status': EHandlerNames.status,
+            'private': EHandlerNames.private,
+            'ip': EHandlerNames.ip,
+            'port': EHandlerNames.port,
+            # Поля Rust сервера (RustFilter)
             'rust_queued_players': EHandlerNames.rust_queued_players,
             'rust_last_wipe': EHandlerNames.rust_last_wipe,
             'rust_next_wipe': EHandlerNames.rust_next_wipe,
-            'pve': EHandlerNames.pve,
-            'private': EHandlerNames.private
+            'is_pve': EHandlerNames.is_pve,
+            'rust_url': EHandlerNames.rust_url,
+            'map_url': EHandlerNames.map_url,
+            'thumbnail_url': EHandlerNames.thumbnail_url,
+            'steam_id': EHandlerNames.steam_id,
+            'modded': EHandlerNames.modded,
+            'official': EHandlerNames.official,
+            'rust_description': EHandlerNames.rust_description,
+            'gamemode': EHandlerNames.gamemode,
+            # Поля игрока (PlayerFilter)
+            'name': EHandlerNames.player_name,
+            'private': EHandlerNames.player_private,
+            'online': EHandlerNames.online,
+            'server_online': EHandlerNames.online_server_id
         }
         return field_to_handler.get(field)
     
@@ -347,14 +362,26 @@ class Dispatcher:
         """Проверяет одно изменение по фильтру"""
         # Маппинг ключей API на атрибуты фильтра
         filter_attr_map = {
+            # Поля сервера (ServerFilter)
             'players': 'players_check',
-            'maxPlayers': 'max_player_check',
+            'max_players': 'max_player_check',
             'status': 'status_check',
             'private': 'private_check',
+            'ip': 'ip_port_check',
+            'port': 'ip_port_check',
+            # Поля Rust сервера (RustFilter)
             'rust_queued_players': 'queued_players_check',
             'rust_last_wipe': 'last_wipe_check',
             'rust_next_wipe': 'next_wipe_check',
-            'pve': 'pve_check'
+            'is_pve': 'pve_check',
+            'rust_url': 'url_check',
+            'map_url': 'map_url_check',
+            'thumbnail_url': 'map_thumbnailUrl_check',
+            # Поля игрока (PlayerFilter)
+            'name': 'player_name_check',
+            'private': 'player_private_check',
+            'online': 'check_online_status',
+            'server_online': 'check_server_change'
         }
         
         filter_attr = filter_attr_map.get(key)
@@ -366,14 +393,13 @@ class Dispatcher:
             
             # Для числовых фильтров
             if isinstance(check_value, int) and check_value >= 0:
-                if key in ['players', 'maxPlayers', 'rust_queued_players']:
+                if key in ['players', 'max_players', 'rust_queued_players']:
                     if isinstance(new_value, (int, float)) and new_value >= check_value:
                         return True
             
             # Для булевых фильтров
             elif isinstance(check_value, bool) and check_value:
-                if key in ['status', 'rust_last_wipe', 'rust_next_wipe', 'pve', 'private']:
-                    return True
+                return True
         
         return False
     
@@ -391,17 +417,28 @@ class Dispatcher:
                 if key in ['name', 'game_id']:
                     continue
                 
-                # Проверяем фильтры в зависимости от типа (используем ключи из API)
                 # Маппинг ключей API на атрибуты фильтра
                 filter_attr_map = {
+                    # Поля сервера (ServerFilter)
                     'players': 'players_check',
-                    'maxPlayers': 'max_player_check',
+                    'max_players': 'max_player_check',
                     'status': 'status_check',
                     'private': 'private_check',
+                    'ip': 'ip_port_check',
+                    'port': 'ip_port_check',
+                    # Поля Rust сервера (RustFilter)
                     'rust_queued_players': 'queued_players_check',
                     'rust_last_wipe': 'last_wipe_check',
                     'rust_next_wipe': 'next_wipe_check',
-                    'pve': 'pve_check'
+                    'is_pve': 'pve_check',
+                    'rust_url': 'url_check',
+                    'map_url': 'map_url_check',
+                    'thumbnail_url': 'map_thumbnailUrl_check',
+                    # Поля игрока (PlayerFilter)
+                    'name': 'player_name_check',
+                    'private': 'player_private_check',
+                    'online': 'check_online_status',
+                    'server_online': 'check_server_change'
                 }
                 
                 filter_attr = filter_attr_map.get(key)
@@ -411,17 +448,15 @@ class Dispatcher:
                     if check_value is None:
                         continue
                     
-                    # Для числовых фильтров (players, maxPlayers, queued_players)
+                    # Для числовых фильтров (players, max_players, queued_players)
                     if isinstance(check_value, int) and check_value >= 0:
-                        if key in ['players', 'maxPlayers', 'rust_queued_players']:
+                        if key in ['players', 'max_players', 'rust_queued_players']:
                             if isinstance(new_value, (int, float)) and new_value >= check_value:
                                 return True
                     
                     # Для булевых фильтров
                     elif isinstance(check_value, bool) and check_value:
-                        # Проверяем изменение статуса, вайпа и т.д.
-                        if key in ['status', 'rust_last_wipe', 'rust_next_wipe', 'pve', 'private']:
-                            return True
+                        return True
         
         return False
     
@@ -469,27 +504,31 @@ class Dispatcher:
         """
         field_names = {
             'players': 'Игроки',
-            'maxPlayers': 'Макс. игроки',
+            'max_players': 'Макс. игроки',
             'status': 'Статус',
             'rust_queued_players': 'Очередь',
             'rust_last_wipe': 'Последний вайп',
             'rust_next_wipe': 'Следующий вайп',
             'rust_next_wipe_type': 'Тип следующего вайпа',
-            'pve': 'PVE',
+            'is_pve': 'PVE',
             'private': 'Приватный',
             'rust_url': 'URL сервера',
-            'rust_maps_url': 'URL карты',
-            'rust_maps_thumbnailUrl': 'Миниатюра карты'
+            'map_url': 'URL карты',
+            'thumbnail_url': 'Миниатюра карты',
+            'steam_id': 'Steam ID',
+            'modded': 'Моды',
+            'official': 'Официальный',
+            'rust_description': 'Описание',
+            'gamemode': 'Режим игры',
+            'name': 'Имя игрока',
+            'online': 'Онлайн статус',
+            'server_online': 'Сервер игрока'
         }
-        return field_names.get(key, key)
+        return field_names.get(key, key.replace('_', ' ').title())
 
     async def add_bot(self, bot: Bot = None):
         """
-        Функция для добавления бота, с помощью которого отправляются изменения пользователям (бот может быть лишь один\
-            его перезапись означает смену бота для отправки сообщений)
-
-        :param bot: Объект класса aiogram.Bot, с помощью которого происходит отправка изменений
-        :return None:
+        Функция для добавления бота, с помощью которого отправляются изменения пользователям
         """
 
         if bot:
@@ -580,4 +619,3 @@ class Dispatcher:
                 raise
 
         return wrapper
-            

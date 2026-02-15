@@ -1,6 +1,17 @@
 # BattleMetrics API Documentation
 
+> **Примечание:** Это справочная документация по BattleMetrics API, используемому ботом для получения данных о серверах и игроках Rust. Полная документация API доступна на [battlemetrics.com/developers](https://www.battlemetrics.com/developers).
+> 
 > **Статус:** API находится в состоянии разработки и может быть изменен. Обсуждения следует вести в [Discord канале #api](https://discord.gg/battlemetrics).
+
+## Использование в проекте
+
+Бот использует следующие endpoints BattleMetrics API:
+- `GET /servers/` - получение информации о серверах
+- `GET /players/` - получение информации об игроках
+- `GET /games/` - получение информации об играх
+
+Для работы с API требуется API ключ, который настраивается в файле `.env` как `BM_API_KEY`.
 
 ---
 
